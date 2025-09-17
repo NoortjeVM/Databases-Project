@@ -4,7 +4,7 @@ from flask_sqlalchemy import SQLAlchemy
 app = Flask(__name__)
 
 # MySQL connection: adjust user, password, and db name as needed
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:smcN2005@localhost/pizza_ordering'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:password@localhost/pizza_ordering'
 
 db = SQLAlchemy(app)
 
