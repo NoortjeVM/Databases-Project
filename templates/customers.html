@@ -1,0 +1,32 @@
+{% extends "layout.html" %}
+{% block content %}
+  <a class="btn btn-success" href="{{ url_for('customers.new_customer') }}">New Customer</a>
+  {% if customers %}
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Phone</th>
+        <th>Address</th>
+        <th>Birth Date</th>
+        <th>Orders</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in customers %}
+      <tr>
+        <td>{{ c.customer_id }}</td>
+        <td>{{ c.full_name }}</td>
+        <td>{{ c.phone_number }}</td>
+        <td>{{ c.address or "Not provided" }}</td>
+        <td>{{ c.birthdate.strftime('%Y-%m-%d') }}</td>
+        <td>{{ c.orders|length }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <p>No customers yet.</p>
+  {% endif %}
+{% endblock %}

@@ -1,0 +1,58 @@
+{% extends "layout.html" %}
+{% block content %}
+  <form method="post" action="{{ url_for('orders.create_order') }}">
+    <label>Customer *
+      <select name="customer_id" required>
+        <option value="">-- Select customer --</option>
+        {% for customer in customers %}
+        <option value="{{ customer.customer_id }}">
+          {{ customer.full_name }} ({{ customer.phone_number }})
+        </option>
+        {% endfor %}
+      </select>
+    </label>
+    
+    <label>Menu Item *
+      <select name="menu_item_id" required>
+        <option value="">-- Select menu item --</option>
+        {% for item in menu_items %}
+        <option value="{{ item.item_id }}">
+          {{ item.item_name }} — € {{ '%.2f'|format(item.item_price) }}
+        </option>
+        {% endfor %}
+      </select>
+    </label>
+    
+    <label>Quantity *
+      <input type="number" min="1" value="1" name="amount" required>
+    </label>
+    
+    <label>Delivery Person *
+      <select name="delivery_person_id" required>
+        <option value="">-- Select delivery person --</option>
+        {% for dp in delivery_persons %}
+        <option value="{{ dp.delivery_person_id }}">
+          {{ dp.full_name }} ({{ dp.postal_code }})
+        </option>
+        {% endfor %}
+      </select>
+    </label>
+    
+    <label>Discount Code (Optional)
+      <select name="discount_id">
+        <option value="">-- No discount --</option>
+        {% for discount in discount_codes %}
+        <option value="{{ discount.discount_id }}">
+          {{ discount.discount_code }} ({{ discount.percentage }}% off)
+        </option>
+        {% endfor %}
+      </select>
+    </label>
+    
+    <label>Delivery Address
+      <textarea name="delivery_address" rows="3" placeholder="Enter delivery address..."></textarea>
+    </label>
+    
+    <p><button class="btn btn-primary" type="submit">Create Order</button></p>
+  </form>
+{% endblock %}

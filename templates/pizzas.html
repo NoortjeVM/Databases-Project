@@ -1,0 +1,53 @@
+{% extends "layout.html" %}
+{% block content %}
+  {% if pizzas %}
+  <table>
+    <thead>
+      <tr>
+        <th>Pizza ID</th>
+        <th>Name</th>
+        <th>Price</th>
+        <th>Ingredients</th>
+        <th>Dietary Info</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for pizza in pizzas %}
+      <tr>
+        <td>{{ pizza.pizza_id }}</td>
+        <td>{{ pizza.menu_item.item_name }}</td>
+        <td>€ {{ '%.2f'|format(pizza.menu_item.item_price) }}</td>
+        <td>
+          {% if pizza.ingredients %}
+            <div class="pizza-ingredients">
+              {% for ingredient in pizza.ingredients %}
+                {{ ingredient.ingredient_name }}{% if not loop.last %}, {% endif %}
+              {% endfor %}
+            </div>
+          {% else %}
+            <em>No ingredients assigned</em>
+          {% endif %}
+        </td>
+        <td class="dietary-info">
+          {% if pizza.ingredients %}
+            {% set all_vegan = pizza.ingredients|selectattr('vegan')|list|length == pizza.ingredients|length %}
+            {% set all_vegetarian = pizza.ingredients|selectattr('vegetarian')|list|length == pizza.ingredients|length %}
+            {% if all_vegan %}
+              <span class="vegan">🌱 Vegan</span>
+            {% elif all_vegetarian %}
+              <span class="vegetarian">🥬 Vegetarian</span>
+            {% else %}
+              <span>🥩 Contains non-vegetarian</span>
+            {% endif %}
+          {% else %}
+            <span>—</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <p>No pizzas yet. Create some menu items with type "Pizza" first.</p>
+  {% endif %}
+{% endblock %}

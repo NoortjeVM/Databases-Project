@@ -1,0 +1,29 @@
+{% extends "layout.html" %}
+{% block content %}
+  <form method="post" action="{{ url_for('customers.create_customer') }}">
+    <label>First Name *
+      <input type="text" name="first_name" required>
+    </label>
+    <label>Last Name *
+      <input type="text" name="last_name" required>
+    </label>
+    <label>Phone Number *
+      <input type="tel" name="phone_number" required>
+    </label>
+    <label>Address
+      <textarea name="address" rows="3"></textarea>
+    </label>
+    <label>Birth Date *
+      <input type="date" name="birthdate" required>
+    </label>
+    <label>Gender
+      <select name="gender">
+        <option value="">Select...</option>
+        <option value="0">Female</option>
+        <option value="1">Male</option>
+        <option value="2">Other</option>
+      </select>
+    </label>
+    <p><button class="btn btn-primary" type="submit">Create Customer</button></p>
+  </form>
+{% endblock %}

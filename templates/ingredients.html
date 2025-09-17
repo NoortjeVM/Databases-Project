@@ -1,0 +1,36 @@
+{% extends "layout.html" %}
+{% block content %}
+  <a class="btn btn-success" href="{{ url_for('ingredients.new_ingredient') }}">New Ingredient</a>
+  {% if ingredients %}
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Price</th>
+        <th>Dietary Info</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for ingredient in ingredients %}
+      <tr>
+        <td>{{ ingredient.ingredient_id }}</td>
+        <td>{{ ingredient.ingredient_name }}</td>
+        <td>€ {{ '%.2f'|format(ingredient.price) }}</td>
+        <td class="dietary-info">
+          {% if ingredient.vegan %}
+            <span class="vegan">🌱 Vegan</span>
+          {% elif ingredient.vegetarian %}
+            <span class="vegetarian">🥬 Vegetarian</span>
+          {% else %}
+            <span>🥩 Non-vegetarian</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <p>No ingredients yet.</p>
+  {% endif %}
+{% endblock %}
