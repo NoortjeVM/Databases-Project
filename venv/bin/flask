@@ -1,4 +1,6 @@
-#!/Users/lisa/Documents/DSAI_year2/databases-project/venv/bin/python
+#!/bin/sh
+'''exec' "/Users/noortjevanmaldegem/Documents/Universiteit/Jaar 2/Periode 1/Databases/databases-project/venv/bin/python3.13" "$0" "$@"
+' '''
 import sys
 from flask.cli import main
 if __name__ == '__main__':
