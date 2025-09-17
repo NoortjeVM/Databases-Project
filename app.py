@@ -1,34 +1,42 @@
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
+from controllers import customers_bp, menu_items_bp, orders_bp, ingredients_bp, pizzas_bp
+from models import db, seed_data
 
-app = Flask(__name__)
+def create_app():
+    app = Flask(__name__)
+    
+    # Use MySQL connection instead of SQLite
+    app.config["SQLALCHEMY_DATABASE_URI"] = "mysql+pymysql://root:password@localhost/pizza_ordering"
+    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+    app.secret_key = "dev-secret"
 
-# MySQL connection: adjust user, password, and db name as needed
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:password@localhost/pizza_ordering'
+    db.init_app(app)
 
-db = SQLAlchemy(app)
+    # Register blueprints for different sections
+    app.register_blueprint(customers_bp)
+    app.register_blueprint(menu_items_bp)
+    app.register_blueprint(orders_bp)
+    app.register_blueprint(ingredients_bp)
+    app.register_blueprint(pizzas_bp)
 
-# Example table (add more in models.py later if you split)
-class Pizza(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
+    with app.app_context():
+        db.create_all()
+        seed_data()
 
-# Create tables if they don't exist
-with app.app_context():
-    db.create_all()
+    @app.route("/")
+    def index():
+        return (
+            "<h3>Pizza Ordering System</h3>"
+            '<p>Navigate to: <a href="/customers">/customers</a>, '
+            '<a href="/menu-items">/menu-items</a>, '
+            '<a href="/orders">/orders</a>, '
+            '<a href="/ingredients">/ingredients</a>, '
+            'and <a href="/pizzas">/pizzas</a>.</p>'
+        )
 
-# Optional route to confirm app runs
-@app.route('/')
-def home():
-    return 'Pizza app is running!'
+    return app
 
-if __name__ == '__main__':
-    print("Starting Flask app...")
+if __name__ == "__main__":
+    app = create_app()
+    print("Starting Pizza Ordering Flask app...")
     app.run(debug=True)
-
-
-#to create and activate a vertual environment: 
-# python3 -m venv venv
-# source venv/bin/activate
-# pip install -r requirements.txt
-
