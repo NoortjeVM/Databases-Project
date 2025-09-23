@@ -1,13 +1,19 @@
 from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
+from datetime import date
 
 db = SQLAlchemy()
 
 class MenuItem(db.Model):
     __tablename__ = "menu_items"
     item_id = db.Column(db.Integer, primary_key=True)
-    item_name = db.Column(db.String(32), nullable=False)
-    item_price = db.Column(db.Numeric(8, 2), nullable=False)
+    type = db.Column(db.String(50))
+
+    #menuItem is a baseclass for pizza's, drinks, etc. the column type stores what kind of food it is
+    __mapper_args__ = {
+        'polymorphic_identity': 'menu_item',
+        'polymorphic_on': type
+    }
     
     # Relationships
     pizzas = db.relationship("Pizza", back_populates="menu_item", cascade="all, delete-orphan")
@@ -16,41 +22,72 @@ class MenuItem(db.Model):
     order_items = db.relationship("OrderItem", back_populates="menu_item")
     
     def __repr__(self):
-        return f"<MenuItem {self.item_id} {self.item_name} ${self.item_price}>"
+        return f"<MenuItem {self.item_id}>"
 
 class Pizza(db.Model):
     __tablename__ = "pizzas"
     pizza_id = db.Column(db.Integer, primary_key=True)
     item_id = db.Column(db.Integer, db.ForeignKey("menu_items.item_id"), nullable=False)
+
+    __mapper_args__ = {
+        'polymorphic_identity': 'pizza',
+        #why isnt this working
+    }
     
     # Relationships
     menu_item = db.relationship("MenuItem", back_populates="pizzas")
     ingredients = db.relationship("Ingredient", secondary="pizza_ingredients", back_populates="pizzas")
-    
+    name = db.Column(db.String(50), nullable=False)
+
+    @property
+    def get_price(self):
+        return float(sum(ing.price for ing in self.ingredients))
+
     def __repr__(self):
-        return f"<Pizza {self.pizza_id} item_id={self.item_id}>"
+        return f"<Pizza {self.name} ${self.get_price()}>"
+
 
 class Drink(db.Model):
     __tablename__ = "drinks"
     drink_id = db.Column(db.Integer, primary_key=True)
     item_id = db.Column(db.Integer, db.ForeignKey("menu_items.item_id"), nullable=False)
+    name = db.Column(db.String(50), nullable=False)
+    price = db.Column(db.Numeric(8, 2), nullable=False)
+
+    __mapper_args__ = {
+        'polymorphic_identity': 'drink',
+    }
     
     # Relationships
     menu_item = db.relationship("MenuItem", back_populates="drinks")
+
+    @property
+    def get_price(self): #let every class that is a menu item have a get_price method for unified access
+        return float(self.price)
     
     def __repr__(self):
-        return f"<Drink {self.drink_id} item_id={self.item_id}>"
+        return f"<Drink {self.name} item_id={self.price}>"
 
 class Dessert(db.Model):
     __tablename__ = "desserts"
     dessert_id = db.Column(db.Integer, primary_key=True)
     item_id = db.Column(db.Integer, db.ForeignKey("menu_items.item_id"), nullable=False)
+    name = db.Column(db.String(50), nullable=False)
+    price = db.Column(db.Numeric(8, 2), nullable=False)
+
+    __mapper_args__ = {
+        'polymorphic_identity': 'dessert',
+    }
     
     # Relationships
     menu_item = db.relationship("MenuItem", back_populates="desserts")
     
+    @property
+    def get_price(self):
+        return float(self.price)
+    
     def __repr__(self):
-        return f"<Dessert {self.dessert_id} item_id={self.item_id}>"
+        return f"<Dessert {self.name} item_id={self.price}>"
 
 class Ingredient(db.Model):
     __tablename__ = "ingredients"
@@ -62,7 +99,7 @@ class Ingredient(db.Model):
     
     # Relationships
     pizzas = db.relationship("Pizza", secondary="pizza_ingredients", back_populates="ingredients")
-    
+
     def __repr__(self):
         return f"<Ingredient {self.ingredient_id} {self.ingredient_name} ${self.price}>"
 
@@ -136,9 +173,8 @@ class Order(db.Model):
     customer_id = db.Column(db.Integer, db.ForeignKey("customers.customer_id"), nullable=False)
     discount_id = db.Column(db.Integer, db.ForeignKey("discount_codes.discount_id"), nullable=True)
     delivery_person_id = db.Column(db.Integer, db.ForeignKey("delivery_persons.delivery_person_id"), nullable=False)
-    total_price = db.Column(db.Numeric(8, 2), nullable=False)
     order_time = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    delivery_address = db.Column(db.String(255))
+    delivery_address = db.Column(db.String(255)) 
     
     # Relationships
     customer = db.relationship("Customer", back_populates="orders")
@@ -149,6 +185,44 @@ class Order(db.Model):
     @property
     def item_count(self):
         return sum(item.amount for item in self.order_items)
+    
+    @property
+    def raw_price(self):
+        subtotal = 0.0
+        for item in self.order_items:
+                item_total = item.amount * item.menu_item.get_price()
+                subtotal += item_total
+
+    @property
+    def price_with_discount(self):
+        subtotal = self.raw_price
+        
+        #if today is a customer their birthday 
+        if self.customer.birthdate.month == date.today().month and self.customer.birthdate.day == date.today().day:
+            pizza_prices = []
+            drink_prices = []
+
+            for item in self.order_items:
+                item_type = item.menu_item.__class__.__name__.lower()
+                if item_type == "pizza":
+                    pizza_prices.extend([item.menu_item.get_price()] * item.amount)
+                elif item_type == "drink":
+                    drink_prices.extend([item.menu_item.get_price()] * item.amount)
+
+             # Apply birthday discount: remove one cheapest drink and pizza
+            if pizza_prices:
+                subtotal -= min(pizza_prices)
+            if drink_prices:
+                subtotal -= min(drink_prices)
+
+        #TODO: check if a customer has ordered 10 pizza's -> one free pizza
+        
+        #antoher comment
+        # Apply discount code
+        if self.discount_code:
+            discount_multiplier = (100 - self.discount_code.percentage) / 100
+            subtotal *= discount_multiplier
+        return round(subtotal, 2)
     
     def __repr__(self):
         return f"<Order {self.order_id} customer={self.customer_id} total=${self.total_price}>"
