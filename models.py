@@ -12,7 +12,6 @@ class MenuItem(db.Model):
     #menuItem is a baseclass for pizza's, drinks, etc. the column type stores what kind of food it is
     __mapper_args__ = {
         'polymorphic_identity': 'menu_item', 
-
         'polymorphic_on': type
     }
     
@@ -26,13 +25,12 @@ class MenuItem(db.Model):
         return f"<MenuItem {self.item_id}>"
 
 class Pizza(db.Model):
-    __tablename__ = "pizza" # Does it work now?
+    __tablename__ = "pizza"
     pizza_id = db.Column(db.Integer, primary_key=True)
     item_id = db.Column(db.Integer, db.ForeignKey("menu_items.item_id"), nullable=False)
 
     __mapper_args__ = {
         'polymorphic_identity': 'pizza',
-        #why isnt this working (see above)
     }
     
     # Relationships
@@ -235,28 +233,43 @@ class OrderItem(db.Model):
     amount = db.Column(db.Integer, default=1, nullable=False)
     
     # Relationships
+    #..
     order = db.relationship("Order", back_populates="order_item")
     menu_item = db.relationship("MenuItem", back_populates="order_item")
     
     def __repr__(self):
         return f"<OrderItem order={self.order_id} item={self.item_id} amount={self.amount}>"
 
-def seed_data():
-    """Seed the database with initial data"""
+def add_data():
     if Customer.query.count() == 0:
         db.session.add_all([
             Customer(first_name="Mario", last_name="Rossi", birthdate=datetime(1985, 5, 15).date(), 
-                    address="Via Roma 123", phone_number="+1234567890", gender=1),
+                     address="Via Roma 123", phone_number="+1234567890", gender=1),
             Customer(first_name="Luigi", last_name="Bianchi", birthdate=datetime(1990, 8, 22).date(),
-                    address="Via Milano 456", phone_number="+1234567891", gender=1),
+                     address="Via Milano 456", phone_number="+1234567891", gender=1),
             Customer(first_name="Maria", last_name="Verdi", birthdate=datetime(1988, 3, 10).date(),
-                    address="Via Napoli 789", phone_number="+1234567892", gender=0),
+                     address="Via Napoli 789", phone_number="+1234567892", gender=0),
+            Customer(first_name="Giulia", last_name="Neri", birthdate=datetime(1995, 1, 20).date(),
+                     address="Via Torino 111", phone_number="+1234567893", gender=0),
+            Customer(first_name="Paolo", last_name="Ricci", birthdate=datetime(1982, 11, 2).date(),
+                     address="Via Firenze 222", phone_number="+1234567894", gender=1),
+            Customer(first_name="Francesca", last_name="Marino", birthdate=datetime(1991, 7, 7).date(),
+                     address="Via Venezia 333", phone_number="+1234567895", gender=0),
+            Customer(first_name="Antonio", last_name="Greco", birthdate=datetime(1987, 4, 18).date(),
+                     address="Via Genova 444", phone_number="+1234567896", gender=1),
+            Customer(first_name="Chiara", last_name="Fontana", birthdate=datetime(1993, 12, 5).date(),
+                     address="Via Bologna 555", phone_number="+1234567897", gender=0),
+            Customer(first_name="Stefano", last_name="Galli", birthdate=datetime(1980, 9, 30).date(),
+                     address="Via Verona 666", phone_number="+1234567898", gender=1),
+            Customer(first_name="Alessia", last_name="Costa", birthdate=datetime(1999, 2, 14).date(),
+                     address="Via Bari 777", phone_number="+1234567899", gender=0),
         ])
     
     if DeliveryPerson.query.count() == 0:
         db.session.add_all([
-            DeliveryPerson(delivery_person_first_name="Giovanni", delivery_person_last_name="Delivery", postal_code="12345A"),
-            DeliveryPerson(delivery_person_first_name="Francesco", delivery_person_last_name="Speed", postal_code="67890B"),
+            DeliveryPerson(delivery_person_first_name="Giovanni", delivery_person_last_name="Delivery", postal_code="1234AB"),
+            DeliveryPerson(delivery_person_first_name="Francesco", delivery_person_last_name="Speed", postal_code="5678CD"),
+            DeliveryPerson(delivery_person_first_name="Luca", delivery_person_last_name="Fast", postal_code="9012EF"),
         ])
     
     if Ingredient.query.count() == 0:
@@ -266,32 +279,44 @@ def seed_data():
             Ingredient(ingredient_name="Pepperoni", price=2.50, vegetarian=False, vegan=False),
             Ingredient(ingredient_name="Mushrooms", price=1.75, vegetarian=True, vegan=True),
             Ingredient(ingredient_name="Bell Peppers", price=1.25, vegetarian=True, vegan=True),
+            Ingredient(ingredient_name="Onions", price=1.00, vegetarian=True, vegan=True),
+            Ingredient(ingredient_name="Olives", price=1.50, vegetarian=True, vegan=True),
+            Ingredient(ingredient_name="Ham", price=2.75, vegetarian=False, vegan=False),
+            Ingredient(ingredient_name="Pineapple", price=1.80, vegetarian=True, vegan=True),
+            Ingredient(ingredient_name="Basil", price=0.75, vegetarian=True, vegan=True),
         ])
     
     if MenuItem.query.count() == 0:
-        menu_items = [
-            MenuItem(item_name="Margherita Pizza", item_price=12.99),
-            MenuItem(item_name="Pepperoni Pizza", item_price=15.99),
-            MenuItem(item_name="Veggie Pizza", item_price=14.99),
-            MenuItem(item_name="Coca Cola", item_price=2.50),
-            MenuItem(item_name="Water", item_price=1.50),
-            MenuItem(item_name="Tiramisu", item_price=5.99),
-        ]
-        db.session.add_all(menu_items)
-        db.session.commit()  # Commit to get IDs
-        
-        # Create pizzas, drinks, and desserts
+        # Create 10 pizzas
+        pizza_items = [MenuItem(type="pizza") for _ in range(10)]
+        drink_items = [MenuItem(type="drink") for _ in range(3)]
+        dessert_items = [MenuItem(type="dessert") for _ in range(2)]
+        db.session.add_all(pizza_items + drink_items + dessert_items)
+        db.session.commit()
+
+        # Pizzas
         pizzas = [
-            Pizza(item_id=1),  # Margherita
-            Pizza(item_id=2),  # Pepperoni
-            Pizza(item_id=3),  # Veggie
+            Pizza(item_id=pizza_items[0].item_id, name="Margherita"),
+            Pizza(item_id=pizza_items[1].item_id, name="Pepperoni"),
+            Pizza(item_id=pizza_items[2].item_id, name="Veggie Deluxe"),
+            Pizza(item_id=pizza_items[3].item_id, name="Hawaiian"),
+            Pizza(item_id=pizza_items[4].item_id, name="Four Cheese"),
+            Pizza(item_id=pizza_items[5].item_id, name="Meat Feast"),
+            Pizza(item_id=pizza_items[6].item_id, name="BBQ Chicken"),
+            Pizza(item_id=pizza_items[7].item_id, name="Capricciosa"),
+            Pizza(item_id=pizza_items[8].item_id, name="Diavola"),
+            Pizza(item_id=pizza_items[9].item_id, name="Funghi"),
         ]
+        # Drinks
         drinks = [
-            Drink(item_id=4),  # Coca Cola
-            Drink(item_id=5),  # Water
+            Drink(item_id=drink_items[0].item_id, name="Coca Cola", price=2.50),
+            Drink(item_id=drink_items[1].item_id, name="Water", price=1.00),
+            Drink(item_id=drink_items[2].item_id, name="Fanta", price=2.20),
         ]
+        # Desserts
         desserts = [
-            Dessert(item_id=6),  # Tiramisu
+            Dessert(item_id=dessert_items[0].item_id, name="Tiramisu", price=4.00),
+            Dessert(item_id=dessert_items[1].item_id, name="Panna Cotta", price=3.50),
         ]
         db.session.add_all(pizzas + drinks + desserts)
     
