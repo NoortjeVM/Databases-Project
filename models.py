@@ -1,4 +1,5 @@
 from datetime import datetime
+import math
 from flask_sqlalchemy import SQLAlchemy
 from datetime import date
 
@@ -117,6 +118,7 @@ class Customer(db.Model):
     address = db.Column(db.String(255))
     phone_number = db.Column(db.String(32), nullable=False, unique=True)
     gender = db.Column(db.Integer)  # 0, 1, 2 for different gender options
+    ten_pizza_discount_used = db.Column(db.Integer, default=0)
     
     # Relationships
     orders = db.relationship("Order", back_populates="customer", cascade="all, delete-orphan")
@@ -125,6 +127,27 @@ class Customer(db.Model):
     @property
     def full_name(self):
         return f"{self.first_name} {self.last_name}"
+    
+    @property
+    def birthday(self):
+        if self.birthdate.month == date.today().month and self.birthdate.day == date.today().day:
+            return True
+        return False
+    
+    @property
+    def total_pizzas_ordered(self):
+        pizza_count = 0
+        for order in self.orders:
+            for item in order.order_items:
+                # Ensure the item is a pizza
+                if isinstance(item.menu_item, Pizza):
+                    pizza_count += item.amount
+        return pizza_count
+    
+    @property
+    def available_ten_pizza_discount(self):
+        return math.floor(self.total_pizzas_ordered / 10) - self.ten_pizza_discount_used
+
     
     def __repr__(self):
         return f"<Customer {self.customer_id} {self.full_name}>"
@@ -191,37 +214,7 @@ class Order(db.Model):
         for item in self.order_items:
                 item_total = item.amount * item.menu_item.get_price()
                 subtotal += item_total
-
-    @property
-    def price_with_discount(self):
-        subtotal = self.raw_price
-        
-        #if today is a customer their birthday 
-        if self.customer.birthdate.month == date.today().month and self.customer.birthdate.day == date.today().day:
-            pizza_prices = []
-            drink_prices = []
-
-            for item in self.order_items:
-                item_type = item.menu_item.__class__.__name__.lower()
-                if item_type == "pizza":
-                    pizza_prices.extend([item.menu_item.get_price()] * item.amount)
-                elif item_type == "drink":
-                    drink_prices.extend([item.menu_item.get_price()] * item.amount)
-
-             # Apply birthday discount: remove one cheapest drink and pizza
-            if pizza_prices:
-                subtotal -= min(pizza_prices)
-            if drink_prices:
-                subtotal -= min(drink_prices)
-
-        #TODO: check if a customer has ordered 10 pizza's -> one free pizza
-        
-        #antoher comment
-        # Apply discount code
-        if self.discount_code:
-            discount_multiplier = (100 - self.discount_code.percentage) / 100
-            subtotal *= discount_multiplier
-        return round(subtotal, 2)
+        return subtotal
     
     def __repr__(self):
         return f"<Order {self.order_id} customer={self.customer_id} total=${self.total_price}>"
@@ -233,14 +226,13 @@ class OrderItem(db.Model):
     amount = db.Column(db.Integer, default=1, nullable=False)
     
     # Relationships
-    #..
     order = db.relationship("Order", back_populates="order_item")
     menu_item = db.relationship("MenuItem", back_populates="order_item")
     
     def __repr__(self):
         return f"<OrderItem order={self.order_id} item={self.item_id} amount={self.amount}>"
 
-def add_data():
+def seed_data():
     if Customer.query.count() == 0:
         db.session.add_all([
             Customer(first_name="Mario", last_name="Rossi", birthdate=datetime(1985, 5, 15).date(), 
@@ -328,3 +320,72 @@ def add_data():
         ])
     
     db.session.commit()
+
+
+#in the controller:
+#1. ensure a new order has at least one pizza
+#2. put in the method below
+
+#TODO: think about what if the order isnt placed:
+# we still want to display their discounts before they pay
+# but if they dont pay the discounts shouldnt be deleted from the table yet (or marked as used)
+
+def apply_discounts(order):
+    subtotal = order.raw_price
+
+    # Check discounts
+    free_pizza = order.customer.available_ten_pizza_discount
+    free_drink = 0
+
+    if order.customer.birthday():
+        #if the customer has already placed an order today they have already received their free pizza (every order contains pizza so that is always true)
+        #decide: do we want to check if they have also used their free drink in that order -> if not give them free drink this order?
+        #\_> i say no, just let them use birthday discount on the first order of that day. that's it. makes it easier and is a logical decision.
+            
+        #check if they have already placed another order today -> if not, they get free pizza and drink
+        used_birthday_discount = False
+        for ord in order.customer.orders:
+            if ord.order_time.day == date.today().day and ord!=order:
+                used_birthday_discount = True
+    
+        if used_birthday_discount == False:
+            free_pizza += 1
+            free_drink += 1
+
+    if free_pizza >0 or free_drink>0:
+        pizza_prices = []
+        drink_prices = []
+
+        # Collect pizza and drink prices in the order
+        for item in order.order_items:
+            item_type = item.menu_item.__class__.__name__.lower()
+            if item_type == "pizza":
+                pizza_prices.extend([item.menu_item.get_price()] * item.amount) #repeats the price in the list as many times as the item is in the order 
+            elif item_type == "drink":
+                drink_prices.extend([item.menu_item.get_price()] * item.amount)
+
+        #mark used free pizza discounts as used by changing field ten_pizza_discount_used in the db
+        order.customer.ten_pizza_discount_used += min(order.customer.available_ten_pizza_discount, len(pizza_prices))
+
+        # Apply free pizza discount
+        for i in range(free_pizza):
+            if pizza_prices:
+                cheapest = min(pizza_prices)
+                subtotal -= cheapest
+                pizza_prices.remove(cheapest)
+        
+        #Apply birthday drink discount
+        for i in range(free_drink):
+            if drink_prices:
+                cheapest = min(drink_prices)
+                subtotal -= cheapest
+                drink_prices.remove(cheapest)
+
+    # Apply discount code if one is chosen
+    if order.discount_code:
+        discount_multiplier = (100 - order.discount_code.percentage) / 100
+        subtotal *= discount_multiplier
+
+        #TODO remove discount code now that it is used, do that here or somewhere else?
+        
+    return round(subtotal, 2)
