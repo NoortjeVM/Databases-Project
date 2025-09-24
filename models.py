@@ -5,13 +5,14 @@ from datetime import date
 db = SQLAlchemy()
 
 class MenuItem(db.Model):
-    __tablename__ = "menu_items"
+    __tablename__ = "menu_item"
     item_id = db.Column(db.Integer, primary_key=True)
     type = db.Column(db.String(50))
 
     #menuItem is a baseclass for pizza's, drinks, etc. the column type stores what kind of food it is
     __mapper_args__ = {
-        'polymorphic_identity': 'menu_item',
+        'polymorphic_identity': 'menu_item', 
+
         'polymorphic_on': type
     }
     
@@ -25,18 +26,18 @@ class MenuItem(db.Model):
         return f"<MenuItem {self.item_id}>"
 
 class Pizza(db.Model):
-    __tablename__ = "pizzas"
+    __tablename__ = "pizza" # Does it work now?
     pizza_id = db.Column(db.Integer, primary_key=True)
     item_id = db.Column(db.Integer, db.ForeignKey("menu_items.item_id"), nullable=False)
 
     __mapper_args__ = {
         'polymorphic_identity': 'pizza',
-        #why isnt this working
+        #why isnt this working (see above)
     }
     
     # Relationships
-    menu_item = db.relationship("MenuItem", back_populates="pizzas")
-    ingredients = db.relationship("Ingredient", secondary="pizza_ingredients", back_populates="pizzas")
+    menu_item = db.relationship("MenuItem", back_populates="pizza")
+    ingredients = db.relationship("Ingredient", secondary="pizza_ingredients", back_populates="pizza")
     name = db.Column(db.String(50), nullable=False)
 
     @property
@@ -48,9 +49,9 @@ class Pizza(db.Model):
 
 
 class Drink(db.Model):
-    __tablename__ = "drinks"
+    __tablename__ = "drink"
     drink_id = db.Column(db.Integer, primary_key=True)
-    item_id = db.Column(db.Integer, db.ForeignKey("menu_items.item_id"), nullable=False)
+    item_id = db.Column(db.Integer, db.ForeignKey("menu_item.item_id"), nullable=False)
     name = db.Column(db.String(50), nullable=False)
     price = db.Column(db.Numeric(8, 2), nullable=False)
 
@@ -59,7 +60,7 @@ class Drink(db.Model):
     }
     
     # Relationships
-    menu_item = db.relationship("MenuItem", back_populates="drinks")
+    menu_item = db.relationship("MenuItem", back_populates="drink")
 
     @property
     def get_price(self): #let every class that is a menu item have a get_price method for unified access
@@ -69,7 +70,7 @@ class Drink(db.Model):
         return f"<Drink {self.name} item_id={self.price}>"
 
 class Dessert(db.Model):
-    __tablename__ = "desserts"
+    __tablename__ = "dessert"
     dessert_id = db.Column(db.Integer, primary_key=True)
     item_id = db.Column(db.Integer, db.ForeignKey("menu_items.item_id"), nullable=False)
     name = db.Column(db.String(50), nullable=False)
@@ -80,7 +81,7 @@ class Dessert(db.Model):
     }
     
     # Relationships
-    menu_item = db.relationship("MenuItem", back_populates="desserts")
+    menu_item = db.relationship("MenuItem", back_populates="dessert")
     
     @property
     def get_price(self):
@@ -90,7 +91,7 @@ class Dessert(db.Model):
         return f"<Dessert {self.name} item_id={self.price}>"
 
 class Ingredient(db.Model):
-    __tablename__ = "ingredients"
+    __tablename__ = "ingredient"
     ingredient_id = db.Column(db.Integer, primary_key=True)
     ingredient_name = db.Column(db.String(32), nullable=False, unique=True)
     price = db.Column(db.Numeric(8, 2), nullable=False)
@@ -98,19 +99,19 @@ class Ingredient(db.Model):
     vegan = db.Column(db.Boolean, nullable=False, default=False)
     
     # Relationships
-    pizzas = db.relationship("Pizza", secondary="pizza_ingredients", back_populates="ingredients")
+    pizzas = db.relationship("Pizza", secondary="pizza_ingredients", back_populates="ingredient")
 
     def __repr__(self):
         return f"<Ingredient {self.ingredient_id} {self.ingredient_name} ${self.price}>"
 
 # Association table for Pizza-Ingredient many-to-many relationship
 pizza_ingredients = db.Table('pizza_ingredients',
-    db.Column('pizza_id', db.Integer, db.ForeignKey('pizzas.pizza_id'), primary_key=True),
-    db.Column('ingredient_id', db.Integer, db.ForeignKey('ingredients.ingredient_id'), primary_key=True)
+    db.Column('pizza_id', db.Integer, db.ForeignKey('pizza.pizza_id'), primary_key=True),
+    db.Column('ingredient_id', db.Integer, db.ForeignKey('ingredient.ingredient_id'), primary_key=True)
 )
 
 class Customer(db.Model):
-    __tablename__ = "customers"
+    __tablename__ = "customer"
     customer_id = db.Column(db.Integer, primary_key=True)
     first_name = db.Column(db.String(32), nullable=False)
     last_name = db.Column(db.String(32), nullable=False)
@@ -121,7 +122,7 @@ class Customer(db.Model):
     
     # Relationships
     orders = db.relationship("Order", back_populates="customer", cascade="all, delete-orphan")
-    discounts = db.relationship("DiscountCode", secondary="customer_discount", back_populates="customers")
+    discounts = db.relationship("DiscountCode", secondary="customer_discount", back_populates="customer")
     
     @property
     def full_name(self):
@@ -131,13 +132,13 @@ class Customer(db.Model):
         return f"<Customer {self.customer_id} {self.full_name}>"
 
 class DiscountCode(db.Model):
-    __tablename__ = "discount_codes"
+    __tablename__ = "discount_code"
     discount_id = db.Column(db.Integer, primary_key=True)
     percentage = db.Column(db.Integer, nullable=False)
     discount_code = db.Column(db.String(32), nullable=False, unique=True)
     
     # Relationships
-    customers = db.relationship("Customer", secondary="customer_discount", back_populates="discounts")
+    customers = db.relationship("Customer", secondary="customer_discount", back_populates="discount")
     orders = db.relationship("Order", back_populates="discount_code")
     
     def __repr__(self):
@@ -145,13 +146,13 @@ class DiscountCode(db.Model):
 
 # Association table for Customer-Discount many-to-many relationship
 customer_discount = db.Table('customer_discount',
-    db.Column('customer_id', db.Integer, db.ForeignKey('customers.customer_id'), primary_key=True),
-    db.Column('discount_id', db.Integer, db.ForeignKey('discount_codes.discount_id'), primary_key=True),
+    db.Column('customer_id', db.Integer, db.ForeignKey('customer.customer_id'), primary_key=True),
+    db.Column('discount_id', db.Integer, db.ForeignKey('discount_code.discount_id'), primary_key=True),
     db.Column('used', db.Boolean, nullable=False, default=False)
 )
 
 class DeliveryPerson(db.Model):
-    __tablename__ = "delivery_persons"
+    __tablename__ = "delivery_person"
     delivery_person_id = db.Column(db.Integer, primary_key=True)
     delivery_person_first_name = db.Column(db.String(32), nullable=False)
     delivery_person_last_name = db.Column(db.String(32), nullable=False)
@@ -168,18 +169,18 @@ class DeliveryPerson(db.Model):
         return f"<DeliveryPerson {self.delivery_person_id} {self.full_name}>"
 
 class Order(db.Model):
-    __tablename__ = "orders"
+    __tablename__ = "order"
     order_id = db.Column(db.Integer, primary_key=True)
-    customer_id = db.Column(db.Integer, db.ForeignKey("customers.customer_id"), nullable=False)
-    discount_id = db.Column(db.Integer, db.ForeignKey("discount_codes.discount_id"), nullable=True)
-    delivery_person_id = db.Column(db.Integer, db.ForeignKey("delivery_persons.delivery_person_id"), nullable=False)
+    customer_id = db.Column(db.Integer, db.ForeignKey("customer.customer_id"), nullable=False)
+    discount_id = db.Column(db.Integer, db.ForeignKey("discount_code.discount_id"), nullable=True)
+    delivery_person_id = db.Column(db.Integer, db.ForeignKey("delivery_person.delivery_person_id"), nullable=False)
     order_time = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     delivery_address = db.Column(db.String(255)) 
     
     # Relationships
-    customer = db.relationship("Customer", back_populates="orders")
-    discount_code = db.relationship("DiscountCode", back_populates="orders")
-    delivery_person = db.relationship("DeliveryPerson", back_populates="orders")
+    customer = db.relationship("Customer", back_populates="order")
+    discount_code = db.relationship("DiscountCode", back_populates="order")
+    delivery_person = db.relationship("DeliveryPerson", back_populates="order")
     order_items = db.relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
     
     @property
@@ -228,14 +229,14 @@ class Order(db.Model):
         return f"<Order {self.order_id} customer={self.customer_id} total=${self.total_price}>"
 
 class OrderItem(db.Model):
-    __tablename__ = "order_items"
-    order_id = db.Column(db.Integer, db.ForeignKey("orders.order_id"), primary_key=True)
-    item_id = db.Column(db.Integer, db.ForeignKey("menu_items.item_id"), primary_key=True)
+    __tablename__ = "order_item"
+    order_id = db.Column(db.Integer, db.ForeignKey("order.order_id"), primary_key=True)
+    item_id = db.Column(db.Integer, db.ForeignKey("menu_item.item_id"), primary_key=True)
     amount = db.Column(db.Integer, default=1, nullable=False)
     
     # Relationships
-    order = db.relationship("Order", back_populates="order_items")
-    menu_item = db.relationship("MenuItem", back_populates="order_items")
+    order = db.relationship("Order", back_populates="order_item")
+    menu_item = db.relationship("MenuItem", back_populates="order_item")
     
     def __repr__(self):
         return f"<OrderItem order={self.order_id} item={self.item_id} amount={self.amount}>"
