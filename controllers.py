@@ -181,12 +181,13 @@ def new_order():
 @orders_bp.route("/orders", methods=["POST"])
 def create_order():
     customer_id = request.form.get("customer_id")
-    delivery_person_id = request.form.get("delivery_person_id")
     discount_id = request.form.get("discount_id") or None
     delivery_address = request.form.get("delivery_address", "").strip()
     menu_item_id = request.form.get("menu_item_id")
     amount = request.form.get("amount", "1")
-    
+
+    delivery_person_id = assign_delivery_person(delivery_address)
+
     try:
         amount = int(amount)
         if amount < 1:
@@ -199,7 +200,7 @@ def create_order():
     menu_item = MenuItem.query.get(menu_item_id)
     
     if not customer or not delivery_person or not menu_item:
-        flash("Please select valid customer, delivery person, and menu item.", "error")
+        flash("Please select valid customer and menu item.", "error")
         return redirect(url_for("orders.new_order"))
     
     try:
@@ -236,3 +237,8 @@ def create_order():
     except Exception as e:
         flash(f"Error creating order: {str(e)}", "error")
         return redirect(url_for("orders.new_order"))
+    
+
+def assign_delivery_person(delivery_address):
+    
+    return delivery_person_id

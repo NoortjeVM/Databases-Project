@@ -28,15 +28,15 @@ class MenuItem(db.Model):
 class Pizza(db.Model):
     __tablename__ = "pizza"
     pizza_id = db.Column(db.Integer, primary_key=True)
-    item_id = db.Column(db.Integer, db.ForeignKey("menu_items.item_id"), nullable=False)
+    item_id = db.Column(db.Integer, db.ForeignKey("menu_item.item_id"), nullable=False)
 
     __mapper_args__ = {
         'polymorphic_identity': 'pizza',
     }
     
     # Relationships
-    menu_item = db.relationship("MenuItem", back_populates="pizza")
-    ingredients = db.relationship("Ingredient", secondary="pizza_ingredients", back_populates="pizza")
+    menu_item = db.relationship("MenuItem", back_populates="pizzas")
+    ingredients = db.relationship("Ingredient", secondary="pizza_ingredient", back_populates="pizzas")
     name = db.Column(db.String(50), nullable=False)
 
     @property
@@ -59,7 +59,7 @@ class Drink(db.Model):
     }
     
     # Relationships
-    menu_item = db.relationship("MenuItem", back_populates="drink")
+    menu_item = db.relationship("MenuItem", back_populates="drinks")
 
     @property
     def get_price(self): #let every class that is a menu item have a get_price method for unified access
@@ -71,7 +71,7 @@ class Drink(db.Model):
 class Dessert(db.Model):
     __tablename__ = "dessert"
     dessert_id = db.Column(db.Integer, primary_key=True)
-    item_id = db.Column(db.Integer, db.ForeignKey("menu_items.item_id"), nullable=False)
+    item_id = db.Column(db.Integer, db.ForeignKey("menu_item.item_id"), nullable=False)
     name = db.Column(db.String(50), nullable=False)
     price = db.Column(db.Numeric(8, 2), nullable=False)
 
@@ -80,7 +80,7 @@ class Dessert(db.Model):
     }
     
     # Relationships
-    menu_item = db.relationship("MenuItem", back_populates="dessert")
+    menu_item = db.relationship("MenuItem", back_populates="desserts")
     
     @property
     def get_price(self):
@@ -98,13 +98,13 @@ class Ingredient(db.Model):
     vegan = db.Column(db.Boolean, nullable=False, default=False)
     
     # Relationships
-    pizzas = db.relationship("Pizza", secondary="pizza_ingredients", back_populates="ingredient")
+    pizzas = db.relationship("Pizza", secondary="pizza_ingredient", back_populates="ingredients")
 
     def __repr__(self):
         return f"<Ingredient {self.ingredient_id} {self.ingredient_name} ${self.price}>"
 
 # Association table for Pizza-Ingredient many-to-many relationship
-pizza_ingredients = db.Table('pizza_ingredients',
+pizza_ingredient = db.Table('pizza_ingredient',
     db.Column('pizza_id', db.Integer, db.ForeignKey('pizza.pizza_id'), primary_key=True),
     db.Column('ingredient_id', db.Integer, db.ForeignKey('ingredient.ingredient_id'), primary_key=True)
 )
@@ -122,7 +122,7 @@ class Customer(db.Model):
     
     # Relationships
     orders = db.relationship("Order", back_populates="customer", cascade="all, delete-orphan")
-    discounts = db.relationship("DiscountCode", secondary="customer_discount", back_populates="customer")
+    discounts = db.relationship("DiscountCode", secondary="customer_discount", back_populates="customers")
     
     @property
     def full_name(self):
@@ -159,7 +159,7 @@ class DiscountCode(db.Model):
     discount_code = db.Column(db.String(32), nullable=False, unique=True)
     
     # Relationships
-    customers = db.relationship("Customer", secondary="customer_discount", back_populates="discount")
+    customers = db.relationship("Customer", secondary="customer_discount", back_populates="discounts")
     orders = db.relationship("Order", back_populates="discount_code")
     
     def __repr__(self):
@@ -196,12 +196,13 @@ class Order(db.Model):
     discount_id = db.Column(db.Integer, db.ForeignKey("discount_code.discount_id"), nullable=True)
     delivery_person_id = db.Column(db.Integer, db.ForeignKey("delivery_person.delivery_person_id"), nullable=False)
     order_time = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    delivery_address = db.Column(db.String(255)) 
+    delivery_address = db.Column(db.String(255), nullable=False)
+    postal_code = db.Column(db.String(6), nullable=False)
     
     # Relationships
-    customer = db.relationship("Customer", back_populates="order")
-    discount_code = db.relationship("DiscountCode", back_populates="order")
-    delivery_person = db.relationship("DeliveryPerson", back_populates="order")
+    customer = db.relationship("Customer", back_populates="orders")
+    discount_code = db.relationship("DiscountCode", back_populates="orders")
+    delivery_person = db.relationship("DeliveryPerson", back_populates="orders")
     order_items = db.relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
     
     @property
@@ -226,8 +227,8 @@ class OrderItem(db.Model):
     amount = db.Column(db.Integer, default=1, nullable=False)
     
     # Relationships
-    order = db.relationship("Order", back_populates="order_item")
-    menu_item = db.relationship("MenuItem", back_populates="order_item")
+    order = db.relationship("Order", back_populates="order_items")
+    menu_item = db.relationship("MenuItem", back_populates="order_items")
     
     def __repr__(self):
         return f"<OrderItem order={self.order_id} item={self.item_id} amount={self.amount}>"
@@ -321,71 +322,3 @@ def seed_data():
     
     db.session.commit()
 
-
-#in the controller:
-#1. ensure a new order has at least one pizza
-#2. put in the method below
-
-#TODO: think about what if the order isnt placed:
-# we still want to display their discounts before they pay
-# but if they dont pay the discounts shouldnt be deleted from the table yet (or marked as used)
-
-def apply_discounts(order):
-    subtotal = order.raw_price
-
-    # Check discounts
-    free_pizza = order.customer.available_ten_pizza_discount
-    free_drink = 0
-
-    if order.customer.birthday():
-        #if the customer has already placed an order today they have already received their free pizza (every order contains pizza so that is always true)
-        #decide: do we want to check if they have also used their free drink in that order -> if not give them free drink this order?
-        #\_> i say no, just let them use birthday discount on the first order of that day. that's it. makes it easier and is a logical decision.
-            
-        #check if they have already placed another order today -> if not, they get free pizza and drink
-        used_birthday_discount = False
-        for ord in order.customer.orders:
-            if ord.order_time.day == date.today().day and ord!=order:
-                used_birthday_discount = True
-    
-        if used_birthday_discount == False:
-            free_pizza += 1
-            free_drink += 1
-
-    if free_pizza >0 or free_drink>0:
-        pizza_prices = []
-        drink_prices = []
-
-        # Collect pizza and drink prices in the order
-        for item in order.order_items:
-            item_type = item.menu_item.__class__.__name__.lower()
-            if item_type == "pizza":
-                pizza_prices.extend([item.menu_item.get_price()] * item.amount) #repeats the price in the list as many times as the item is in the order 
-            elif item_type == "drink":
-                drink_prices.extend([item.menu_item.get_price()] * item.amount)
-
-        #mark used free pizza discounts as used by changing field ten_pizza_discount_used in the db
-        order.customer.ten_pizza_discount_used += min(order.customer.available_ten_pizza_discount, len(pizza_prices))
-
-        # Apply free pizza discount
-        for i in range(free_pizza):
-            if pizza_prices:
-                cheapest = min(pizza_prices)
-                subtotal -= cheapest
-                pizza_prices.remove(cheapest)
-        
-        #Apply birthday drink discount
-        for i in range(free_drink):
-            if drink_prices:
-                cheapest = min(drink_prices)
-                subtotal -= cheapest
-                drink_prices.remove(cheapest)
-
-    # Apply discount code if one is chosen
-    if order.discount_code:
-        discount_multiplier = (100 - order.discount_code.percentage) / 100
-        subtotal *= discount_multiplier
-
-        #TODO remove discount code now that it is used, do that here or somewhere else?
-        
-    return round(subtotal, 2)
