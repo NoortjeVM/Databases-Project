@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from sqlalchemy.orm import selectinload
 from models import db, Customer, MenuItem, Order, OrderItem, Ingredient, Pizza, Drink, Dessert, DeliveryPerson, DiscountCode
-from datetime import datetime
+from datetime import date, datetime
 
 customers_bp = Blueprint("customers", __name__)
 menu_items_bp = Blueprint("menu_items", __name__, url_prefix="/menu-items")
@@ -183,10 +183,13 @@ def create_order():
     customer_id = request.form.get("customer_id")
     discount_id = request.form.get("discount_id") or None
     delivery_address = request.form.get("delivery_address", "").strip()
+    postal_code = request.form.get("postal_code", "").strip()
     menu_item_id = request.form.get("menu_item_id")
     amount = request.form.get("amount", "1")
 
-    delivery_person_id = assign_delivery_person(delivery_address)
+    delivery_person_id = assign_delivery_person(postal_code)
+    if delivery_person_id is None:
+        flash("Order placement failed, no delivery person available in your postal code.", "error")
 
     try:
         amount = int(amount)
@@ -239,6 +242,99 @@ def create_order():
         return redirect(url_for("orders.new_order"))
     
 
-def assign_delivery_person(delivery_address):
+def assign_delivery_person(order):
+    for dps in DeliveryPerson:
+        #TODO: look at how the post code string is parsed, put both in all caps no spaces
+        if DeliveryPerson.postal_code == order.postal_code:
+            #TODO put the order in the queue of the delivery person. 
+            # where is that queue stored? do we need an extra column in the db?
+            return dps.delivery_person_id
+        
+    return None
+
+#in the controller:
+#1. ensure a new order has at least one pizza
+#2. put in the method below
+
+#
+# we want to be aple to display discounts before customers pay, we want to be able to call calculate_discounts() more then once without changing antything
+# so i put mark discounts as used in another method, eventhough this does make the code a bit longer
+
+# now, if customers dont pay the discounts arent yet deleted from the table (or marked as used) after calculating the price
+
+
+def valid_birthday_discount(order):
+    if order.customer.birthday:
+        #if the customer has already placed an order today they have already received their free pizza (every order contains pizza so that is always true)
+        #decide: do we want to check if they have also used their free drink in that order -> if not give them free drink this order?
+        #\_> i say no, just let them use birthday discount on the first order of that day. that's it. makes it easier and is a logical decision.
+            
+        #check if they have already placed another order today (on which te discount was then automatically used)-> if not, they get free pizza and drink
+        for ord in order.customer.orders:
+            if ord.order_time.day == date.today().day and ord.order_time.month == date.today().month and ord!=order:
+                return False
+        return True
+    return False
     
-    return delivery_person_id
+def calculate_discounts(order):
+    subtotal = order.raw_price
+
+    # Check discounts
+    free_pizza = order.customer.available_ten_pizza_discount
+    free_drink = 0
+
+    if valid_birthday_discount(order):
+            free_pizza += 1
+            free_drink += 1
+
+    if free_pizza >0 or free_drink>0:
+        pizza_prices = []
+        drink_prices = []
+
+        # Collect pizza and drink prices in the order
+        for item in order.order_items:
+            item_type = item.menu_item.__class__.__name__.lower()
+            if item_type == "pizza":
+                pizza_prices.extend([item.menu_item.get_price()] * item.amount) #repeats the price in the list as many times as the item is in the order 
+            elif item_type == "drink":
+                drink_prices.extend([item.menu_item.get_price()] * item.amount)
+
+        # Apply free pizza discount
+        for i in range(free_pizza):
+            if pizza_prices:
+                cheapest = min(pizza_prices)
+                subtotal -= cheapest
+                pizza_prices.remove(cheapest)
+        
+        #Apply birthday drink discount
+        for i in range(free_drink):
+            if drink_prices:
+                cheapest = min(drink_prices)
+                subtotal -= cheapest
+                drink_prices.remove(cheapest)
+
+    # Apply discount code if one is chosen
+    if order.discount_code:
+        discount_multiplier = (100 - order.discount_code.percentage) / 100
+        subtotal *= discount_multiplier
+        
+    return round(subtotal, 2)
+
+def set_discounts_to_used(order):
+    #for birthday discounts we automatically check if it was already used
+
+    #set discount code to used
+    #if order.discount_code:
+        #TODO: sql update s.t. 
+        # customer_discount.used = True
+
+    #mark used free pizza discounts as used by changing field ten_pizza_discount_used in the db
+    for item in order.order_items:
+        item_type = item.menu_item.__class__.__name__.lower()
+        if item_type == "pizza":
+            pizza_count += item.amount
+    if valid_birthday_discount(order):
+        pizza_count -=1 #since they first use free birthday pizza, only then look at other free pizza discounts
+    
+    #add the free pizza discounts they use for the rest of the order to the used discounts column
+    order.customer.ten_pizza_discount_used += min(order.customer.available_ten_pizza_discount, pizza_count)

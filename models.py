@@ -16,26 +16,25 @@ class MenuItem(db.Model):
         'polymorphic_on': type
     }
     
-    # Relationships
-    pizzas = db.relationship("Pizza", back_populates="menu_item", cascade="all, delete-orphan")
-    drinks = db.relationship("Drink", back_populates="menu_item", cascade="all, delete-orphan")
-    desserts = db.relationship("Dessert", back_populates="menu_item", cascade="all, delete-orphan")
+    # relationship
     order_items = db.relationship("OrderItem", back_populates="menu_item")
     
+    @property
+    def item_name(self):
+        return self.name
+
     def __repr__(self):
         return f"<MenuItem {self.item_id}>"
 
-class Pizza(db.Model):
+class Pizza(MenuItem):
     __tablename__ = "pizza"
-    pizza_id = db.Column(db.Integer, primary_key=True)
-    item_id = db.Column(db.Integer, db.ForeignKey("menu_item.item_id"), nullable=False)
+    item_id = db.Column(db.Integer, db.ForeignKey("menu_item.item_id"), primary_key=True)
 
     __mapper_args__ = {
-        'polymorphic_identity': 'pizza',
+        'polymorphic_identity': 'pizza'
     }
     
     # Relationships
-    menu_item = db.relationship("MenuItem", back_populates="pizzas")
     ingredients = db.relationship("Ingredient", secondary="pizza_ingredient", back_populates="pizzas")
     name = db.Column(db.String(50), nullable=False)
 
@@ -47,20 +46,16 @@ class Pizza(db.Model):
         return f"<Pizza {self.name} ${self.get_price()}>"
 
 
-class Drink(db.Model):
+class Drink(MenuItem):
     __tablename__ = "drink"
-    drink_id = db.Column(db.Integer, primary_key=True)
-    item_id = db.Column(db.Integer, db.ForeignKey("menu_item.item_id"), nullable=False)
+    item_id = db.Column(db.Integer, db.ForeignKey("menu_item.item_id"), primary_key=True)
     name = db.Column(db.String(50), nullable=False)
     price = db.Column(db.Numeric(8, 2), nullable=False)
 
     __mapper_args__ = {
-        'polymorphic_identity': 'drink',
+        'polymorphic_identity': 'drink'
     }
     
-    # Relationships
-    menu_item = db.relationship("MenuItem", back_populates="drinks")
-
     @property
     def get_price(self): #let every class that is a menu item have a get_price method for unified access
         return float(self.price)
@@ -68,19 +63,16 @@ class Drink(db.Model):
     def __repr__(self):
         return f"<Drink {self.name} item_id={self.price}>"
 
-class Dessert(db.Model):
+class Dessert(MenuItem):
     __tablename__ = "dessert"
-    dessert_id = db.Column(db.Integer, primary_key=True)
-    item_id = db.Column(db.Integer, db.ForeignKey("menu_item.item_id"), nullable=False)
+    item_id = db.Column(db.Integer, db.ForeignKey("menu_item.item_id"), primary_key=True)
+
     name = db.Column(db.String(50), nullable=False)
     price = db.Column(db.Numeric(8, 2), nullable=False)
 
     __mapper_args__ = {
-        'polymorphic_identity': 'dessert',
+        'polymorphic_identity': 'dessert'
     }
-    
-    # Relationships
-    menu_item = db.relationship("MenuItem", back_populates="desserts")
     
     @property
     def get_price(self):
@@ -105,7 +97,7 @@ class Ingredient(db.Model):
 
 # Association table for Pizza-Ingredient many-to-many relationship
 pizza_ingredient = db.Table('pizza_ingredient',
-    db.Column('pizza_id', db.Integer, db.ForeignKey('pizza.pizza_id'), primary_key=True),
+    db.Column('pizza_id', db.Integer, db.ForeignKey('pizza.item_id'), primary_key=True),
     db.Column('ingredient_id', db.Integer, db.ForeignKey('ingredient.ingredient_id'), primary_key=True)
 )
 
