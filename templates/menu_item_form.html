@@ -4,17 +4,37 @@
     <label>Item Name *
       <input type="text" name="item_name" required placeholder="e.g., Margherita Pizza">
     </label>
-    <label>Price (€) *
-      <input type="number" step="0.01" min="0.01" name="item_price" required placeholder="12.99">
-    </label>
+
     <label>Item Type *
-      <select name="item_type" required>
+      <select name="item_type" id="item_type" required onchange="togglePriceField()">
         <option value="">Select type...</option>
-        <option value="pizza">🍕 Pizza</option>
-        <option value="drink">🥤 Drink</option>
-        <option value="dessert">🍰 Dessert</option>
+        <option value="pizza">Pizza</option>
+        <option value="drink">Drink</option>
+        <option value="dessert">Dessert</option>
       </select>
     </label>
+
+    <div id="price-field" style="display:none;">
+      <label>Price (€) *
+        <input type="number" step="0.01" min="0.01" name="item_price" placeholder="12.99">
+      </label>
+    </div>
+
     <p><button class="btn btn-primary" type="submit">Create Menu Item</button></p>
   </form>
+
+  <script>
+    function togglePriceField() {
+      const type = document.getElementById("item_type").value;
+      const priceField = document.getElementById("price-field");
+
+      if (type === "drink" || type === "dessert") {
+        priceField.style.display = "block";
+        priceField.querySelector("input").required = true;
+      } else {
+        priceField.style.display = "none";
+        priceField.querySelector("input").required = false;
+      }
+    }
+  </script>
 {% endblock %}

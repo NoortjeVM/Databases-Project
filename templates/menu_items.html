@@ -15,28 +15,35 @@
     <tbody>
       {% for item in menu_items %}
       <tr>
-        <td>{{ item.item_id }}</td>
-        <td>{{ item.item_name }}</td>
-        <td>€ {{ '%.2f'|format(item.item_price) }}</td>
+        <td>{{ item.menu_item_id }}</td>
+        <td>{{ item.name }}</td>
+        <td>€ {{ '%.2f'|format(item.price) }}</td>
         <td>
-          {% if item.pizzas %}
+          {% if item.item_type == "pizza" %}
             <span style="color: #d2691e;">🍕 Pizza</span>
-          {% elif item.drinks %}
+          {% elif item.item_type == "drink" %}
             <span style="color: #4169e1;">🥤 Drink</span>
-          {% elif item.desserts %}
+          {% elif item.item_type == "dessert" %}
             <span style="color: #8b4513;">🍰 Dessert</span>
           {% else %}
             General
           {% endif %}
         </td>
         <td>
-          {% if item.pizzas and item.pizzas[0].ingredients %}
-            <div class="pizza-ingredients">
-              Ingredients: 
-              {% for ingredient in item.pizzas[0].ingredients %}
-                {{ ingredient.ingredient_name }}{% if not loop.last %}, {% endif %}
-              {% endfor %}
-            </div>
+          {% if item.item_type == "pizza" %}
+            {% set pizza = Pizza.query.get(item.item_ref_id) %}
+            {% if pizza and pizza.ingredients %}
+              <div class="pizza-ingredients">
+                Ingredients: 
+                {% for ingredient in pizza.ingredients %}
+                  {{ ingredient.ingredient_name }}{% if not loop.last %}, {% endif %}
+                {% endfor %}
+              </div>
+            {% else %}
+              <em>No ingredients</em>
+            {% endif %}
+          {% else %}
+            —
           {% endif %}
         </td>
       </tr>

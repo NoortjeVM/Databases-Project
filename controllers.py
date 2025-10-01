@@ -9,7 +9,9 @@ orders_bp = Blueprint("orders", __name__)
 ingredients_bp = Blueprint("ingredients", __name__)
 pizzas_bp = Blueprint("pizzas", __name__)
 
+# ----------------------
 # Customers
+# ----------------------
 @customers_bp.route("/customers")
 def list_customers():
     customers = Customer.query.order_by(Customer.customer_id).all()
@@ -54,7 +56,9 @@ def create_customer():
         flash(f"Error creating customer: {str(e)}", "error")
         return redirect(url_for("customers.new_customer"))
 
+# ----------------------
 # Menu Items
+# ----------------------
 @menu_items_bp.route("/")
 def list_menu_items():
     menu_items = MenuItem.query.order_by(MenuItem.item_id).all()
@@ -70,31 +74,36 @@ def create_menu_item():
     item_price = request.form.get("item_price", "").strip()
     item_type = request.form.get("item_type", "").strip()
     
-    if not item_name or not item_price:
-        flash("Item name and price are required.", "error")
+    if not item_name or (item_type != "pizza" and not item_price):
+        flash("Item name (and price for drinks/desserts) are required.", "error")
         return redirect(url_for("menu_items.new_menu_item"))
     
     try:
-        price = float(item_price)
-        if price <= 0:
-            flash("Price must be greater than 0.", "error")
-            return redirect(url_for("menu_items.new_menu_item"))
-        
-        menu_item = MenuItem(item_name=item_name, item_price=price)
-        db.session.add(menu_item)
-        db.session.flush()  # Get the ID
-        
-        # Create the specific type based on selection
+        menu_item = None
         if item_type == "pizza":
-            db.session.add(Pizza(item_id=menu_item.item_id))
+            pizza = Pizza(name=item_name)
+            db.session.add(pizza)
+            db.session.flush()
+            menu_item = MenuItem(item_type="pizza", item_ref_id=pizza.pizza_id)
         elif item_type == "drink":
-            db.session.add(Drink(item_id=menu_item.item_id))
+            price = float(item_price)
+            drink = Drink(name=item_name, price=price)
+            db.session.add(drink)
+            db.session.flush()
+            menu_item = MenuItem(item_type="drink", item_ref_id=drink.drink_id)
         elif item_type == "dessert":
-            db.session.add(Dessert(item_id=menu_item.item_id))
-        
-        db.session.commit()
-        flash("Menu item created successfully.", "success")
+            price = float(item_price)
+            dessert = Dessert(name=item_name, price=price)
+            db.session.add(dessert)
+            db.session.flush()
+            menu_item = MenuItem(item_type="dessert", item_ref_id=dessert.dessert_id)
+
+        if menu_item:
+            db.session.add(menu_item)
+            db.session.commit()
+            flash("Menu item created successfully.", "success")
         return redirect(url_for("menu_items.list_menu_items"))
+
     except ValueError:
         flash("Price must be a valid number.", "error")
         return redirect(url_for("menu_items.new_menu_item"))
@@ -102,7 +111,9 @@ def create_menu_item():
         flash(f"Error creating menu item: {str(e)}", "error")
         return redirect(url_for("menu_items.new_menu_item"))
 
+# ----------------------
 # Ingredients
+# ----------------------
 @ingredients_bp.route("/ingredients")
 def list_ingredients():
     ingredients = Ingredient.query.order_by(Ingredient.ingredient_id).all()
@@ -146,17 +157,22 @@ def create_ingredient():
         flash(f"Error creating ingredient: {str(e)}", "error")
         return redirect(url_for("ingredients.new_ingredient"))
 
+# ----------------------
 # Pizzas
+# ----------------------
 @pizzas_bp.route("/pizzas")
 def list_pizzas():
-    pizzas = (Pizza.query
-              .options(selectinload(Pizza.menu_item),
-                       selectinload(Pizza.ingredients))
-              .order_by(Pizza.pizza_id)
-              .all())
+    pizzas = (
+        Pizza.query
+        .options(selectinload(Pizza.ingredients))
+        .order_by(Pizza.pizza_id)
+        .all()
+    )
     return render_template("pizzas.html", title="Pizzas", pizzas=pizzas)
 
+# ----------------------
 # Orders
+# ----------------------
 @orders_bp.route("/orders")
 def list_orders():
     orders = (Order.query
@@ -171,7 +187,7 @@ def list_orders():
 @orders_bp.route("/orders/new")
 def new_order():
     customers = Customer.query.order_by(Customer.first_name).all()
-    menu_items = MenuItem.query.order_by(MenuItem.item_name).all()
+    menu_items = MenuItem.query.order_by(MenuItem.item_id).all()  # can't order by .name (Python property)
     delivery_persons = DeliveryPerson.query.order_by(DeliveryPerson.delivery_person_first_name).all()
     discount_codes = DiscountCode.query.order_by(DiscountCode.discount_code).all()
     return render_template("order_form.html", title="New Order", 
@@ -208,7 +224,7 @@ def create_order():
     
     try:
         # Calculate total price (simplified - just item price * amount for now)
-        total_price = float(menu_item.item_price) * amount
+        total_price = float(menu_item.price) * amount   # use .price property
         
         # Apply discount if provided
         if discount_id:
@@ -240,101 +256,12 @@ def create_order():
     except Exception as e:
         flash(f"Error creating order: {str(e)}", "error")
         return redirect(url_for("orders.new_order"))
-    
 
-def assign_delivery_person(order):
-    for dps in DeliveryPerson:
-        #TODO: look at how the post code string is parsed, put both in all caps no spaces
-        if DeliveryPerson.postal_code == order.postal_code:
-            #TODO put the order in the queue of the delivery person. 
-            # where is that queue stored? do we need an extra column in the db?
+# ----------------------
+# Delivery person helper
+# ----------------------
+def assign_delivery_person(order_postal_code):
+    for dps in DeliveryPerson.query.all():
+        if dps.postal_code == order_postal_code:
             return dps.delivery_person_id
-        
     return None
-
-#in the controller:
-#1. ensure a new order has at least one pizza
-#2. put in the method below
-
-#
-# we want to be aple to display discounts before customers pay, we want to be able to call calculate_discounts() more then once without changing antything
-# so i put mark discounts as used in another method, eventhough this does make the code a bit longer
-
-# now, if customers dont pay the discounts arent yet deleted from the table (or marked as used) after calculating the price
-
-
-def valid_birthday_discount(order):
-    if order.customer.birthday:
-        #if the customer has already placed an order today they have already received their free pizza (every order contains pizza so that is always true)
-        #decide: do we want to check if they have also used their free drink in that order -> if not give them free drink this order?
-        #\_> i say no, just let them use birthday discount on the first order of that day. that's it. makes it easier and is a logical decision.
-            
-        #check if they have already placed another order today (on which te discount was then automatically used)-> if not, they get free pizza and drink
-        for ord in order.customer.orders:
-            if ord.order_time.day == date.today().day and ord.order_time.month == date.today().month and ord!=order:
-                return False
-        return True
-    return False
-    
-def calculate_discounts(order):
-    subtotal = order.raw_price
-
-    # Check discounts
-    free_pizza = order.customer.available_ten_pizza_discount
-    free_drink = 0
-
-    if valid_birthday_discount(order):
-            free_pizza += 1
-            free_drink += 1
-
-    if free_pizza >0 or free_drink>0:
-        pizza_prices = []
-        drink_prices = []
-
-        # Collect pizza and drink prices in the order
-        for item in order.order_items:
-            item_type = item.menu_item.__class__.__name__.lower()
-            if item_type == "pizza":
-                pizza_prices.extend([item.menu_item.get_price()] * item.amount) #repeats the price in the list as many times as the item is in the order 
-            elif item_type == "drink":
-                drink_prices.extend([item.menu_item.get_price()] * item.amount)
-
-        # Apply free pizza discount
-        for i in range(free_pizza):
-            if pizza_prices:
-                cheapest = min(pizza_prices)
-                subtotal -= cheapest
-                pizza_prices.remove(cheapest)
-        
-        #Apply birthday drink discount
-        for i in range(free_drink):
-            if drink_prices:
-                cheapest = min(drink_prices)
-                subtotal -= cheapest
-                drink_prices.remove(cheapest)
-
-    # Apply discount code if one is chosen
-    if order.discount_code:
-        discount_multiplier = (100 - order.discount_code.percentage) / 100
-        subtotal *= discount_multiplier
-        
-    return round(subtotal, 2)
-
-def set_discounts_to_used(order):
-    #for birthday discounts we automatically check if it was already used
-
-    #set discount code to used
-    #if order.discount_code:
-        #TODO: sql update s.t. 
-        # customer_discount.used = True
-
-    #mark used free pizza discounts as used by changing field ten_pizza_discount_used in the db
-    for item in order.order_items:
-        item_type = item.menu_item.__class__.__name__.lower()
-        if item_type == "pizza":
-            pizza_count += item.amount
-    if valid_birthday_discount(order):
-        pizza_count -=1 #since they first use free birthday pizza, only then look at other free pizza discounts
-    
-    #add the free pizza discounts they use for the rest of the order to the used discounts column
-    order.customer.ten_pizza_discount_used += min(order.customer.available_ten_pizza_discount, pizza_count)

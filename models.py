@@ -8,78 +8,69 @@ db = SQLAlchemy()
 class MenuItem(db.Model):
     __tablename__ = "menu_item"
     item_id = db.Column(db.Integer, primary_key=True)
-    type = db.Column(db.String(50))
+    item_type = db.Column(db.String(20), nullable=False)  # "pizza", "drink", "dessert"
+    item_ref_id = db.Column(db.Integer, nullable=False)   # points to pizza_id / drink_id / dessert_id
 
-    #menuItem is a baseclass for pizza's, drinks, etc. the column type stores what kind of food it is
-    __mapper_args__ = {
-        'polymorphic_identity': 'menu_item', 
-        'polymorphic_on': type
-    }
-    
-    # relationship
     order_items = db.relationship("OrderItem", back_populates="menu_item")
-    
+
     @property
-    def item_name(self):
-        return self.name
+    def name(self):
+        if self.item_type == "pizza":
+            return Pizza.query.get(self.item_ref_id).name
+        elif self.item_type == "drink":
+            return Drink.query.get(self.item_ref_id).name
+        elif self.item_type == "dessert":
+            return Dessert.query.get(self.item_ref_id).name
+        else:
+            return "[unknown]"
 
-    def __repr__(self):
-        return f"<MenuItem {self.item_id}>"
+    @property
+    def price(self):
+        if self.item_type == "pizza":
+            return float(Pizza.query.get(self.item_ref_id).price)
+        elif self.item_type == "drink":
+            return float(Drink.query.get(self.item_ref_id).price)
+        elif self.item_type == "dessert":
+            return float(Dessert.query.get(self.item_ref_id).price)
+        else: 
+            return 0
 
-class Pizza(MenuItem):
+class Pizza(db.Model):
     __tablename__ = "pizza"
-    item_id = db.Column(db.Integer, db.ForeignKey("menu_item.item_id"), primary_key=True)
-
-    __mapper_args__ = {
-        'polymorphic_identity': 'pizza'
-    }
-    
-    # Relationships
-    ingredients = db.relationship("Ingredient", secondary="pizza_ingredient", back_populates="pizzas")
+    pizza_id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50), nullable=False)
 
+    ingredients = db.relationship(
+        "Ingredient",
+        secondary="pizza_ingredient",
+        back_populates="pizzas"
+    )
+
     @property
-    def get_price(self):
+    def price(self):
         return float(sum(ing.price for ing in self.ingredients))
 
     def __repr__(self):
-        return f"<Pizza {self.name} ${self.get_price()}>"
+        return f"<Pizza {self.name} {self.price}>"
 
 
-class Drink(MenuItem):
+class Drink(db.Model):
     __tablename__ = "drink"
-    item_id = db.Column(db.Integer, db.ForeignKey("menu_item.item_id"), primary_key=True)
+    drink_id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50), nullable=False)
     price = db.Column(db.Numeric(8, 2), nullable=False)
-
-    __mapper_args__ = {
-        'polymorphic_identity': 'drink'
-    }
-    
-    @property
-    def get_price(self): #let every class that is a menu item have a get_price method for unified access
-        return float(self.price)
     
     def __repr__(self):
-        return f"<Drink {self.name} item_id={self.price}>"
+        return f"<Drink {self.name} price {self.price}>"
 
-class Dessert(MenuItem):
+class Dessert(db.Model):
     __tablename__ = "dessert"
-    item_id = db.Column(db.Integer, db.ForeignKey("menu_item.item_id"), primary_key=True)
-
+    dessert_id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50), nullable=False)
     price = db.Column(db.Numeric(8, 2), nullable=False)
 
-    __mapper_args__ = {
-        'polymorphic_identity': 'dessert'
-    }
-    
-    @property
-    def get_price(self):
-        return float(self.price)
-    
     def __repr__(self):
-        return f"<Dessert {self.name} item_id={self.price}>"
+        return f"<Dessert {self.name} price {self.price}>"
 
 class Ingredient(db.Model):
     __tablename__ = "ingredient"
@@ -97,7 +88,7 @@ class Ingredient(db.Model):
 
 # Association table for Pizza-Ingredient many-to-many relationship
 pizza_ingredient = db.Table('pizza_ingredient',
-    db.Column('pizza_id', db.Integer, db.ForeignKey('pizza.item_id'), primary_key=True),
+    db.Column('pizza_id', db.Integer, db.ForeignKey('pizza.pizza_id'), primary_key=True),
     db.Column('ingredient_id', db.Integer, db.ForeignKey('ingredient.ingredient_id'), primary_key=True)
 )
 
@@ -249,14 +240,14 @@ def seed_data():
             Customer(first_name="Alessia", last_name="Costa", birthdate=datetime(1999, 2, 14).date(),
                      address="Via Bari 777", phone_number="+1234567899", gender=0),
         ])
-    
+
     if DeliveryPerson.query.count() == 0:
         db.session.add_all([
             DeliveryPerson(delivery_person_first_name="Giovanni", delivery_person_last_name="Delivery", postal_code="1234AB"),
             DeliveryPerson(delivery_person_first_name="Francesco", delivery_person_last_name="Speed", postal_code="5678CD"),
             DeliveryPerson(delivery_person_first_name="Luca", delivery_person_last_name="Fast", postal_code="9012EF"),
         ])
-    
+
     if Ingredient.query.count() == 0:
         db.session.add_all([
             Ingredient(ingredient_name="Tomato Sauce", price=1.50, vegetarian=True, vegan=True),
@@ -270,47 +261,57 @@ def seed_data():
             Ingredient(ingredient_name="Pineapple", price=1.80, vegetarian=True, vegan=True),
             Ingredient(ingredient_name="Basil", price=0.75, vegetarian=True, vegan=True),
         ])
-    
-    if MenuItem.query.count() == 0:
-        # Create 10 pizzas
-        pizza_items = [MenuItem(type="pizza") for _ in range(10)]
-        drink_items = [MenuItem(type="drink") for _ in range(3)]
-        dessert_items = [MenuItem(type="dessert") for _ in range(2)]
-        db.session.add_all(pizza_items + drink_items + dessert_items)
-        db.session.commit()
 
-        # Pizzas
+    if MenuItem.query.count() == 0:
+        # Create pizzas
         pizzas = [
-            Pizza(item_id=pizza_items[0].item_id, name="Margherita"),
-            Pizza(item_id=pizza_items[1].item_id, name="Pepperoni"),
-            Pizza(item_id=pizza_items[2].item_id, name="Veggie Deluxe"),
-            Pizza(item_id=pizza_items[3].item_id, name="Hawaiian"),
-            Pizza(item_id=pizza_items[4].item_id, name="Four Cheese"),
-            Pizza(item_id=pizza_items[5].item_id, name="Meat Feast"),
-            Pizza(item_id=pizza_items[6].item_id, name="BBQ Chicken"),
-            Pizza(item_id=pizza_items[7].item_id, name="Capricciosa"),
-            Pizza(item_id=pizza_items[8].item_id, name="Diavola"),
-            Pizza(item_id=pizza_items[9].item_id, name="Funghi"),
+            Pizza(name="Margherita"),
+            Pizza(name="Pepperoni"),
+            Pizza(name="Veggie Deluxe"),
+            Pizza(name="Hawaiian"),
+            Pizza(name="Four Cheese"),
+            Pizza(name="Meat Feast"),
+            Pizza(name="BBQ Chicken"),
+            Pizza(name="Capricciosa"),
+            Pizza(name="Diavola"),
+            Pizza(name="Funghi"),
         ]
-        # Drinks
+        db.session.add_all(pizzas)
+        db.session.flush()  # get pizza_ids
+
+        # Create drinks
         drinks = [
-            Drink(item_id=drink_items[0].item_id, name="Coca Cola", price=2.50),
-            Drink(item_id=drink_items[1].item_id, name="Water", price=1.00),
-            Drink(item_id=drink_items[2].item_id, name="Fanta", price=2.20),
+            Drink(name="Coca Cola", price=2.50),
+            Drink(name="Water", price=1.00),
+            Drink(name="Fanta", price=2.20),
         ]
-        # Desserts
+        db.session.add_all(drinks)
+        db.session.flush()
+
+        # Create desserts
         desserts = [
-            Dessert(item_id=dessert_items[0].item_id, name="Tiramisu", price=4.00),
-            Dessert(item_id=dessert_items[1].item_id, name="Panna Cotta", price=3.50),
+            Dessert(name="Tiramisu", price=4.00),
+            Dessert(name="Panna Cotta", price=3.50),
         ]
-        db.session.add_all(pizzas + drinks + desserts)
-    
+        db.session.add_all(desserts)
+        db.session.flush()
+
+        # Create corresponding menu items
+        menu_items = []
+        for pizza in pizzas:
+            menu_items.append(MenuItem(item_type="pizza", item_ref_id=pizza.pizza_id))
+        for drink in drinks:
+            menu_items.append(MenuItem(item_type="drink", item_ref_id=drink.drink_id))
+        for dessert in desserts:
+            menu_items.append(MenuItem(item_type="dessert", item_ref_id=dessert.dessert_id))
+
+        db.session.add_all(menu_items)
+
     if DiscountCode.query.count() == 0:
         db.session.add_all([
             DiscountCode(percentage=10, discount_code="WELCOME10"),
             DiscountCode(percentage=15, discount_code="STUDENT15"),
             DiscountCode(percentage=20, discount_code="VIP20"),
         ])
-    
-    db.session.commit()
 
+    db.session.commit()

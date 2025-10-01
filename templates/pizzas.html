@@ -4,7 +4,7 @@
   <table>
     <thead>
       <tr>
-        <th>Item ID</th>
+        <th>Pizza ID</th>
         <th>Name</th>
         <th>Price</th>
         <th>Ingredients</th>
@@ -14,9 +14,9 @@
     <tbody>
       {% for pizza in pizzas %}
       <tr>
-        <td>{{ pizza.item_id }}</td>
+        <td>{{ pizza.pizza_id }}</td>
         <td>{{ pizza.name }}</td>
-        <td>€ {{ '%.2f'|format(pizza.item_price) }}</td>
+        <td>€ {{ '%.2f'|format(pizza.price) }}</td>
         <td>
           {% if pizza.ingredients %}
             <div class="pizza-ingredients">
@@ -48,6 +48,6 @@
     </tbody>
   </table>
   {% else %}
-    <p>No pizzas yet. Create some menu items with type "Pizza" first.</p>
+    <p>No pizzas yet. Create some pizzas first.</p>
   {% endif %}
 {% endblock %}
