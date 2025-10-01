@@ -187,10 +187,11 @@ def create_order():
     menu_item_id = request.form.get("menu_item_id")
     amount = request.form.get("amount", "1")
 
-    delivery_person_id = assign_delivery_person(postal_code)
+    
     if delivery_person_id is None:
         flash("Order placement failed, no delivery person available in your postal code.", "error")
 
+    # Validate the amount
     try:
         amount = int(amount)
         if amount < 1:
@@ -199,15 +200,21 @@ def create_order():
         amount = 1
     
     customer = Customer.query.get(customer_id)
-    delivery_person = DeliveryPerson.query.get(delivery_person_id)
+    delivery_person_id = assign_delivery_person(postal_code)
     menu_item = MenuItem.query.get(menu_item_id)
-    
-    if not customer or not delivery_person or not menu_item:
+
+    # Check if objects exist
+    if not customer or not menu_item:
         flash("Please select valid customer and menu item.", "error")
         return redirect(url_for("orders.new_order"))
     
+    # Check if a delivery persion is found
+    if delivery_person_id is None:
+        flash("No delivery person available for your postal code.", "error")
+        return redirect(url_for("orders.new_order"))
+    
     try:
-        # Calculate total price (simplified - just item price * amount for now)
+        # Calculate total price without discount
         total_price = float(menu_item.price) * amount   # use .price property
         
         # Apply discount if provided
@@ -218,10 +225,11 @@ def create_order():
         
         order = Order(
             customer_id=customer.customer_id,
-            delivery_person_id=delivery_person.delivery_person_id,
+            delivery_person_id=delivery_person_id,
             discount_id=discount_id,
             total_price=total_price,
-            delivery_address=delivery_address
+            delivery_address=delivery_address,
+            postal_code=postal_code
         )
         db.session.add(order)
         db.session.flush()  # Get order ID
@@ -238,6 +246,8 @@ def create_order():
         flash("Order created successfully.", "success")
         return redirect(url_for("orders.list_orders"))
     except Exception as e:
+        # Something went wrong - undo everything
+        db.session.rollback()
         flash(f"Error creating order: {str(e)}", "error")
         return redirect(url_for("orders.new_order"))
 
