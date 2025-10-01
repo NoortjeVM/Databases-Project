@@ -17,7 +17,7 @@
         <option value="">-- Select menu item --</option>
         {% for item in menu_items %}
         <option value="{{ item.item_id }}">
-          {{ item.item_name }} — € {{ '%.2f'|format(item.item_price) }}
+          {{ item.name }} — € {{ '%.2f'|format(item.price) }}
         </option>
         {% endfor %}
       </select>

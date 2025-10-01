@@ -1,56 +1,81 @@
 {% extends "layout.html" %}
 {% block content %}
-  <a class="btn btn-success" href="{{ url_for('menu_items.new_menu_item') }}">New Menu Item</a>
-  {% if menu_items %}
+  {% if pizzas %}
+  <p>Pizza's</p>
   <table>
     <thead>
       <tr>
-        <th>ID</th>
         <th>Name</th>
         <th>Price</th>
-        <th>Type</th>
-        <th>Details</th>
+        <th>Ingredients</th>
+        <th>Dietary Info</th>
       </tr>
     </thead>
     <tbody>
-      {% for item in menu_items %}
+      {% for pizza in pizzas %}
       <tr>
-        <td>{{ item.menu_item_id }}</td>
-        <td>{{ item.name }}</td>
-        <td>€ {{ '%.2f'|format(item.price) }}</td>
+        <td>{{ pizza.name }}</td>
+        <td>€ {{ '%.2f'|format(pizza.price) }}</td>
         <td>
-          {% if item.item_type == "pizza" %}
-            <span style="color: #d2691e;">🍕 Pizza</span>
-          {% elif item.item_type == "drink" %}
-            <span style="color: #4169e1;">🥤 Drink</span>
-          {% elif item.item_type == "dessert" %}
-            <span style="color: #8b4513;">🍰 Dessert</span>
+          {% if pizza.ingredients %}
+            <div class="pizza-ingredients">
+              {% for ingredient in pizza.ingredients %}
+                {{ ingredient.ingredient_name }}{% if not loop.last %}, {% endif %}
+              {% endfor %}
+            </div>
           {% else %}
-            General
+            <em>No ingredients assigned</em>
           {% endif %}
         </td>
-        <td>
-          {% if item.item_type == "pizza" %}
-            {% set pizza = Pizza.query.get(item.item_ref_id) %}
-            {% if pizza and pizza.ingredients %}
-              <div class="pizza-ingredients">
-                Ingredients: 
-                {% for ingredient in pizza.ingredients %}
-                  {{ ingredient.ingredient_name }}{% if not loop.last %}, {% endif %}
-                {% endfor %}
-              </div>
-            {% else %}
-              <em>No ingredients</em>
-            {% endif %}
-          {% else %}
-            —
-          {% endif %}
-        </td>
+        <td>{{ pizza.label }}</td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
   {% else %}
-    <p>No menu items yet.</p>
+    <p>No pizzas yet.</p>
+  {% endif %}
+
+  <p>Drinks</p>
+  {% if drinks %}
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Price</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for drink in drinks %}
+      <tr>
+        <td>{{ drink.name }}</td>
+        <td>€ {{ '%.2f'|format(drink.price) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <p>No drinks yet.</p>
+  {% endif %}
+  <p>Desserts</p>
+  {% if desserts %}
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Price</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for dessert in desserts %}
+      <tr>
+        <td>{{ dessert.name }}</td>
+        <td>€ {{ '%.2f'|format(dessert.price) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <p>No desserts yet.</p>
   {% endif %}
 {% endblock %}

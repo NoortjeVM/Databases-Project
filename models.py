@@ -50,6 +50,14 @@ class Pizza(db.Model):
     def price(self):
         return float(sum(ing.price for ing in self.ingredients))
 
+    @property
+    def label(self):
+        if all (ing.vegan for ing in self.ingredients):
+            return "vegan"
+        elif all (ing.vegeterian for ing in self.ingredients):
+            return "vegetarian"
+        return "non-vegeterian"
+    
     def __repr__(self):
         return f"<Pizza {self.name} {self.price}>"
 
