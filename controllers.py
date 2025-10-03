@@ -178,6 +178,7 @@ def new_order():
                          customers=customers, menu_items=menu_items,
                          delivery_persons=delivery_persons, discount_codes=discount_codes)
 
+'''
 @orders_bp.route("/orders", methods=["POST"])
 def create_order():
     customer_id = request.form.get("customer_id")
@@ -212,6 +213,8 @@ def create_order():
     if delivery_person_id is None:
         flash("No delivery person available for your postal code.", "error")
         return redirect(url_for("orders.new_order"))
+    
+    #TODO: check if there is at least one pizza
     
     try:
         # Calculate total price without discount
@@ -250,79 +253,171 @@ def create_order():
         db.session.rollback()
         flash(f"Error creating order: {str(e)}", "error")
         return redirect(url_for("orders.new_order"))
+'''
+@orders_bp.route("/orders", methods=["GET","POST"])
+def create_order():
+    customer_id = request.form.get("customer_id")
+    discount_id = request.form.get("discount_id") or None
+    delivery_address = request.form.get("delivery_address", "").strip()
+    postal_code = request.form.get("postal_code", "").strip()
+    action = request.form.get("action")  # "preview" or "create"
+
+    # Load base data
+    customers = Customer.query.order_by(Customer.first_name).all()
+    menu_items = MenuItem.query.order_by(MenuItem.item_id).all()
+    discount_codes = DiscountCode.query.order_by(DiscountCode.discount_code).all()
+
+    customer = Customer.query.get(customer_id)
+    discount = DiscountCode.query.get(discount_id) if discount_id else None
+    delivery_person_id = assign_delivery_person(postal_code)
+
+    # Collect selected items
+    items = []
+    for item in menu_items:
+        try:
+            amount = int(request.form.get(f"item_{item.item_id}", 0))
+        except ValueError:
+            amount = 0
+        if amount > 0:
+            items.append((item, amount))
+
+    # Validation
+    if not customer or not items:
+        flash("Please select a valid customer and at least one menu item.", "error")
+        return redirect(url_for("orders.create_order"))
+
+    if delivery_person_id is None:
+        flash("No delivery person available for your postal code.", "error")
+        return redirect(url_for("orders.create_order"))
+
+    # Calculate raw price
+    raw_price = sum(item.price * amount for item, amount in items)
+    discounts = calculate_discounts(customer, discount, items, raw_price)
+
+    if action == "preview":
+        # Just show preview inside the same form
+        return render_template("order_form.html",
+                               title="New Order",
+                               customers=customers,
+                               menu_items=menu_items,
+                               discount_codes=discount_codes,
+                               raw_price=raw_price,
+                               total=discounts["total"],
+                               messages=discounts["messages"])
+
+    elif action == "create":
+        try:
+            order = Order(
+                customer_id=customer.customer_id,
+                delivery_person_id=delivery_person_id,
+                discount_id=discount_id,
+                total_price=discounts["total"],
+                delivery_address=delivery_address,
+                postal_code=postal_code
+            )
+            db.session.add(order)
+            db.session.flush()
+
+            for mi, amt in items:
+                db.session.add(OrderItem(order_id=order.order_id,
+                                         item_id=mi.item_id,
+                                         amount=amt))
+
+            db.session.commit()
+            flash("Order created successfully.", "success")
+            return redirect(url_for("orders.list_orders"))
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Error creating order: {str(e)}", "error")
+            return redirect(url_for("orders.create_order"))
+
+    # Fallback
+    return redirect(url_for("orders.create_order"))
+
+
+
 
 def assign_delivery_person(order):
-    for dps in DeliveryPerson:
+    dpersons = DeliveryPerson.query.all()
+    for dps in dpersons:
         # TODO: look at how the post code string is parsed, put both in all caps no spaces
-        if DeliveryPerson.postal_code == order.postal_code:
+        if dps.postal_code == order.postal_code:
             # TODO put the order in the queue of the delivery person.
             # where is that queue stored? do we need an extra column in the db?
             return dps.delivery_person_id
     return None
 
-def valid_birthday_discount(order):
-    if order.customer.birthday:
+def valid_birthday_discount(customer):
+    if customer.birthday:
         # if the customer has already placed an order today they have already received their free pizza (every order contains pizza so that is always true)
         # decide: do we want to check if they have also used their free drink in that order?
         # -> I say no, just let them use birthday discount on the first order of that day.
 
         # so check if they have already placed another order today
         # (on which the discount was then automatically used) -> if not, they get free pizza and drink
-        for ord in order.customer.orders:
+        for ord in customer.orders:
             if (
                 ord.order_time.day == date.today().day
                 and ord.order_time.month == date.today().month
-                and ord != order
             ):
                 return False
         return True
     return False
 
 
-def calculate_discounts(order):
-    subtotal = order.raw_price
+def calculate_discounts(customer, raw_price, order_items, discount_code):
+    subtotal = raw_price
+    discounts_applied = []
 
     # Check discounts
-    free_pizza = order.customer.available_ten_pizza_discount
+    free_pizza = 0
     free_drink = 0
 
-    if valid_birthday_discount(order):
+    if valid_birthday_discount(customer):
         free_pizza += 1
         free_drink += 1
+        discounts_applied.append("happy birthday! you get one pizza and drink for free")
 
-    if free_pizza > 0 or free_drink > 0:
-        pizza_prices = []
-        drink_prices = []
 
-        # Collect pizza and drink prices in the order
-        for item in order.order_items:
-            item_type = item.menu_item.__class__.__name__.lower()
-            if item_type == "pizza":
-                # repeats the price in the list as many times as the item is in the order
-                pizza_prices.extend([item.menu_item.get_price()] * item.amount)
-            elif item_type == "drink":
-                drink_prices.extend([item.menu_item.get_price()] * item.amount)
+    pizza_prices = []
+    drink_prices = []
 
-        # Apply free pizza discount
-        for i in range(free_pizza):
-            if pizza_prices:
-                cheapest = min(pizza_prices)
-                subtotal -= cheapest
-                pizza_prices.remove(cheapest)
+     # count amount of pizza's and put pizza and drink prices in a list
+    for item in order_items:
+        if item.menu_item.item_type == "pizza":
+            # repeats the price in the list as many times as the item is in the order
+            pizza_prices.extend([item.menu_item.price] * item.amount)
+        elif item.menu_item.item_type == "drink":
+            drink_prices.extend([item.menu_item.price] * item.amount)
 
-        # Apply birthday drink discount
-        for i in range(free_drink):
-            if drink_prices:
-                cheapest = min(drink_prices)
-                subtotal -= cheapest
-                drink_prices.remove(cheapest)
+    # apply 10 pizza discount with how many the remainder of division by 10 has increased 
+    ten_discount += (customer.total_pizzas_ordered + len(pizza_prices)) // 10 - (customer.total_pizzas_ordered // 10)
+    if ten_discount>0:
+        free_pizza+=ten_discount
+        discounts_applied.append(f"10-pizza discount applied ({ten_discount} free pizza('s))")
+
+    # Apply free pizza discount on cheapest pizza's
+    for i in range(free_pizza):
+        if pizza_prices:
+            cheapest = min(pizza_prices)
+            subtotal -= cheapest
+            pizza_prices.remove(cheapest)
+
+    # Apply birthday drink discount
+    for i in range(free_drink):
+        if drink_prices:
+            cheapest = min(drink_prices)
+            subtotal -= cheapest
+            drink_prices.remove(cheapest)
 
     # Apply discount code if one is chosen
-    if order.discount_code:
-        discount_multiplier = (100 - order.discount_code.percentage) / 100
+    if discount_code:
+        discount_multiplier = (100 - discount_code.percentage) / 100
         subtotal *= discount_multiplier
+        discounts_applied.append(f"discount code applied, {discount_code.percentage}% off")
 
-    return round(subtotal, 2)
+    return {"total": round(subtotal, 2), "messages": discounts_applied}
 
 
 def set_discounts_to_used(order):
@@ -335,8 +430,7 @@ def set_discounts_to_used(order):
     # ten_pizza_discount_used in the db
     pizza_count = 0
     for item in order.order_items:
-        item_type = item.menu_item.__class__.__name__.lower()
-        if item_type == "pizza":
+        if item.menu_item.item_type == "pizza":
             pizza_count += item.amount
 
     if valid_birthday_discount(order):

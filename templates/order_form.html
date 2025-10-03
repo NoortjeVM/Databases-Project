@@ -1,5 +1,7 @@
 {% extends "layout.html" %}
 {% block content %}
+  <h2>Create Order</h2>
+
   <form method="post" action="{{ url_for('orders.create_order') }}">
     <label>Customer *
       <select name="customer_id" required>
@@ -12,27 +14,12 @@
       </select>
     </label>
     
-    <label>Menu Item *
-      <select name="menu_item_id" required>
-        <option value="">-- Select menu item --</option>
-        {% for item in menu_items %}
-        <option value="{{ item.item_id }}">
-          {{ item.name }} — € {{ '%.2f'|format(item.price) }}
-        </option>
-        {% endfor %}
-      </select>
-    </label>
-    
-    <label>Quantity *
-      <input type="number" min="1" value="1" name="amount" required>
-    </label>
-    
     <label>Postal Code *
-      <textarea name="postal code" rows="3" placeholder="Enter postal code..."></textarea>
+      <input type="text" name="postal_code" value="{{ request.form.postal_code or '' }}" required>
     </label>
 
     <label>Delivery Address *
-      <textarea name="delivery_address" rows="3" placeholder="Enter delivery address..."></textarea>
+      <textarea name="delivery_address" rows="2" required>{{ request.form.delivery_address or '' }}</textarea>
     </label>
     
     <label>Discount Code (Optional)
@@ -45,7 +32,50 @@
         {% endfor %}
       </select>
     </label>
-    
-    <p><button class="btn btn-primary" type="submit">Create Order</button></p>
+
+    <h3>Select Items</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Price</th>
+          <th>Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in menu_items %}
+        <tr>
+          <td>{{ item.name }}</td>
+          <td>€ {{ '%.2f'|format(item.price) }}</td>
+          <td>
+            <input type="number" name="item_{{ item.item_id }}" min="0"
+                   value="{{ request.form['item_' ~ item.item_id] or 0 }}">
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <p>
+      <button class="btn btn-secondary" type="submit" name="action" value="preview">Calculate Price</button>
+      <button class="btn btn-primary" type="submit" name="action" value="create">Place Order</button>
+    </p>
   </form>
+
+  {% if total is defined %}
+    <hr>
+    <h3>Price Preview</h3>
+    <p>Subtotal: € {{ '%.2f'|format(raw_price) }}</p>
+
+    {% if messages %}
+      <p>Discounts applied:</p>
+      <ul>
+        {% for msg in messages %}
+          <li>{{ msg }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+
+    <h3>Total: € {{ '%.2f'|format(total) }}</h3>
+  {% endif %}
 {% endblock %}

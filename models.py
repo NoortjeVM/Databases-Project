@@ -109,7 +109,6 @@ class Customer(db.Model):
     address = db.Column(db.String(255))
     phone_number = db.Column(db.String(32), nullable=False, unique=True)
     gender = db.Column(db.Integer)  # 0, 1, 2 for different gender options
-    ten_pizza_discount_used = db.Column(db.Integer, default=0)
     
     # Relationships
     orders = db.relationship("Order", back_populates="customer", cascade="all, delete-orphan")
@@ -134,11 +133,6 @@ class Customer(db.Model):
                 if isinstance(item.menu_item, Pizza):
                     pizza_count += item.amount
         return pizza_count
-    
-    @property
-    def available_ten_pizza_discount(self):
-        return math.floor(self.total_pizzas_ordered / 10) - self.ten_pizza_discount_used
-
     
     def __repr__(self):
         return f"<Customer {self.customer_id} {self.full_name}>"
