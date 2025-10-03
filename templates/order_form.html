@@ -1,8 +1,6 @@
 {% extends "layout.html" %}
 {% block content %}
-  <h2>Create Order</h2>
-
-  <form method="post" action="{{ url_for('orders.create_order') }}">
+  <form method="post" action="{{ url_for('create_order.create_order') }}">
     <label>Customer *
       <select name="customer_id" required>
         <option value="">-- Select customer --</option>

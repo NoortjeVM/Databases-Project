@@ -54,9 +54,9 @@ class Pizza(db.Model):
     def label(self):
         if all (ing.vegan for ing in self.ingredients):
             return "vegan"
-        elif all (ing.vegeterian for ing in self.ingredients):
+        elif all (ing.vegetarian for ing in self.ingredients):
             return "vegetarian"
-        return "non-vegeterian"
+        return "non-vegetarian"
     
     def __repr__(self):
         return f"<Pizza {self.name} {self.price}>"
@@ -198,7 +198,7 @@ class Order(db.Model):
     def raw_price(self):
         subtotal = 0.0
         for item in self.order_items:
-                item_total = item.amount * item.menu_item.get_price()
+                item_total = item.amount * item.menu_item.price
                 subtotal += item_total
         return subtotal
     
@@ -218,6 +218,113 @@ class OrderItem(db.Model):
     def __repr__(self):
         return f"<OrderItem order={self.order_id} item={self.item_id} amount={self.amount}>"
 
+def seed_data():
+    # Customers
+    if Customer.query.count() == 0:
+        db.session.add_all([
+            Customer(first_name="Mario", last_name="Rossi", birthdate=datetime(1985, 5, 15).date(),
+                     address="Via Roma 123", phone_number="+1234567890", gender=1),
+            Customer(first_name="Luigi", last_name="Bianchi", birthdate=datetime(1990, 8, 22).date(),
+                     address="Via Milano 456", phone_number="+1234567891", gender=1),
+            Customer(first_name="Maria", last_name="Verdi", birthdate=datetime(1988, 3, 10).date(),
+                     address="Via Napoli 789", phone_number="+1234567892", gender=0),
+        ])
+
+    # Delivery people
+    if DeliveryPerson.query.count() == 0:
+        db.session.add_all([
+            DeliveryPerson(delivery_person_first_name="Giovanni", delivery_person_last_name="Delivery", postal_code="1234AB"),
+            DeliveryPerson(delivery_person_first_name="Francesco", delivery_person_last_name="Speed", postal_code="5678CD"),
+            DeliveryPerson(delivery_person_first_name="Luca", delivery_person_last_name="Fast", postal_code="9012EF"),
+        ])
+
+    # Ingredients
+    if Ingredient.query.count() == 0:
+        db.session.add_all([
+            Ingredient(ingredient_name="Tomato Sauce", price=1.50, vegetarian=True, vegan=True),
+            Ingredient(ingredient_name="Mozzarella", price=2.00, vegetarian=True, vegan=False),
+            Ingredient(ingredient_name="Pepperoni", price=2.50, vegetarian=False, vegan=False),
+            Ingredient(ingredient_name="Mushrooms", price=1.75, vegetarian=True, vegan=True),
+            Ingredient(ingredient_name="Bell Peppers", price=1.25, vegetarian=True, vegan=True),
+            Ingredient(ingredient_name="Onions", price=1.00, vegetarian=True, vegan=True),
+            Ingredient(ingredient_name="Olives", price=1.50, vegetarian=True, vegan=True),
+            Ingredient(ingredient_name="Ham", price=2.75, vegetarian=False, vegan=False),
+            Ingredient(ingredient_name="Pineapple", price=1.80, vegetarian=True, vegan=True),
+            Ingredient(ingredient_name="Basil", price=0.75, vegetarian=True, vegan=True),
+            Ingredient(ingredient_name="Parmesan", price=2.20, vegetarian=True, vegan=False),
+            Ingredient(ingredient_name="Gorgonzola", price=2.30, vegetarian=True, vegan=False),
+        ])
+    db.session.flush()  # so ingredient IDs exist
+
+    # Pizzas with ingredients
+    if Pizza.query.count() == 0:
+        tomato = Ingredient.query.filter_by(ingredient_name="Tomato Sauce").first()
+        mozzarella = Ingredient.query.filter_by(ingredient_name="Mozzarella").first()
+        pepperoni = Ingredient.query.filter_by(ingredient_name="Pepperoni").first()
+        mushrooms = Ingredient.query.filter_by(ingredient_name="Mushrooms").first()
+        peppers = Ingredient.query.filter_by(ingredient_name="Bell Peppers").first()
+        onions = Ingredient.query.filter_by(ingredient_name="Onions").first()
+        olives = Ingredient.query.filter_by(ingredient_name="Olives").first()
+        ham = Ingredient.query.filter_by(ingredient_name="Ham").first()
+        pineapple = Ingredient.query.filter_by(ingredient_name="Pineapple").first()
+        basil = Ingredient.query.filter_by(ingredient_name="Basil").first()
+        parmesan = Ingredient.query.filter_by(ingredient_name="Parmesan").first()
+        gorgonzola = Ingredient.query.filter_by(ingredient_name="Gorgonzola").first()
+
+        pizzas = [
+            Pizza(name="Margherita", ingredients=[tomato, mozzarella, basil]),
+            Pizza(name="Pepperoni", ingredients=[tomato, mozzarella, pepperoni]),
+            Pizza(name="Veggie Deluxe", ingredients=[tomato, mozzarella, mushrooms, peppers, onions, olives]),
+            Pizza(name="Hawaiian", ingredients=[tomato, mozzarella, ham, pineapple]),
+            Pizza(name="Four Cheese", ingredients=[tomato, mozzarella, parmesan, gorgonzola]),
+            Pizza(name="Meat Feast", ingredients=[tomato, mozzarella, ham, pepperoni]),
+            Pizza(name="Capricciosa", ingredients=[tomato, mozzarella, ham, mushrooms, olives]),
+            Pizza(name="Funghi", ingredients=[tomato, mozzarella, mushrooms]),
+        ]
+        db.session.add_all(pizzas)
+        db.session.flush()
+
+    # Drinks
+    if Drink.query.count() == 0:
+        drinks = [
+            Drink(name="Coca Cola", price=2.50),
+            Drink(name="Water", price=1.00),
+            Drink(name="Fanta", price=2.20),
+        ]
+        db.session.add_all(drinks)
+        db.session.flush()
+
+    # Desserts
+    if Dessert.query.count() == 0:
+        desserts = [
+            Dessert(name="Tiramisu", price=4.00),
+            Dessert(name="Panna Cotta", price=3.50),
+        ]
+        db.session.add_all(desserts)
+        db.session.flush()
+
+    # MenuItems wrapper
+    if MenuItem.query.count() == 0:
+        menu_items = []
+        for pizza in Pizza.query.all():
+            menu_items.append(MenuItem(item_type="pizza", item_ref_id=pizza.pizza_id))
+        for drink in Drink.query.all():
+            menu_items.append(MenuItem(item_type="drink", item_ref_id=drink.drink_id))
+        for dessert in Dessert.query.all():
+            menu_items.append(MenuItem(item_type="dessert", item_ref_id=dessert.dessert_id))
+        db.session.add_all(menu_items)
+
+    # Discount codes
+    if DiscountCode.query.count() == 0:
+        db.session.add_all([
+            DiscountCode(percentage=10, discount_code="WELCOME10"),
+            DiscountCode(percentage=15, discount_code="STUDENT15"),
+            DiscountCode(percentage=20, discount_code="VIP20"),
+        ])
+
+    db.session.commit()
+
+'''
 def seed_data():
     if Customer.query.count() == 0:
         db.session.add_all([
@@ -317,3 +424,4 @@ def seed_data():
         ])
 
     db.session.commit()
+'''

@@ -1,5 +1,5 @@
 from flask import Flask
-from controllers import customers_bp, menu_items_bp, orders_bp, ingredients_bp, pizzas_bp
+from controllers import customers_bp, menu_items_bp, orders_bp, ingredients_bp, create_order_bp
 from models import db, seed_data
 
 def create_app():
@@ -17,7 +17,7 @@ def create_app():
     app.register_blueprint(menu_items_bp)
     app.register_blueprint(orders_bp)
     app.register_blueprint(ingredients_bp)
-    app.register_blueprint(pizzas_bp)
+    app.register_blueprint(create_order_bp)
 
     with app.app_context():
         db.create_all()
@@ -31,7 +31,7 @@ def create_app():
             '<a href="/menu-items">/menu-items</a>, '
             '<a href="/orders">/orders</a>, '
             '<a href="/ingredients">/ingredients</a>, '
-            'and <a href="/pizzas">/pizzas</a>.</p>'
+            '<a href="/ingredients">/create_order</a>, '
         )
 
     return app

@@ -7,7 +7,7 @@ customers_bp = Blueprint("customers", __name__)
 menu_items_bp = Blueprint("menu_items", __name__, url_prefix="/menu-items")
 orders_bp = Blueprint("orders", __name__)
 ingredients_bp = Blueprint("ingredients", __name__)
-pizzas_bp = Blueprint("pizzas", __name__)
+create_order_bp = Blueprint("create_order", __name__)
 
 
 # customers
@@ -62,6 +62,7 @@ def list_menu_items():
     pizzas = Pizza.query.all()
     drinks = Drink.query.all()
     desserts = Dessert.query.all()
+    print(pizzas[1].label)
     return render_template("menu_items.html", title="Menu Items", pizzas=pizzas, drinks=drinks, desserts=desserts)
 
 @menu_items_bp.route("/new")
@@ -157,17 +158,18 @@ def create_ingredient():
         return redirect(url_for("ingredients.new_ingredient"))
 
 # Orders
-@orders_bp.route("/orders")
+@orders_bp.route("/list_orders")
 def list_orders():
-    orders = (Order.query
-              .options(selectinload(Order.customer),
-                       selectinload(Order.delivery_person),
-                       selectinload(Order.discount_code),
-                       selectinload(Order.order_items).selectinload(OrderItem.menu_item))
-              .order_by(Order.order_id)
-              .all())
-    return render_template("orders.html", title="Orders", orders=orders)
+    orders = Order.query.all()
+    print(f"amount of orders: {len(orders)}")
+    orders_with_totals = []
+    for order in orders:
+        items = [(oi.menu_item, oi.amount) for oi in order.order_items]
+        discounts = calculate_discounts(order.customer, order.raw_price, items, order.discount_code)
+        orders_with_totals.append((order, discounts))
+    return render_template("orders.html", orders_with_totals=orders_with_totals)
 
+'''
 @orders_bp.route("/orders/new")
 def new_order():
     customers = Customer.query.order_by(Customer.first_name).all()
@@ -177,7 +179,7 @@ def new_order():
     return render_template("order_form.html", title="New Order", 
                          customers=customers, menu_items=menu_items,
                          delivery_persons=delivery_persons, discount_codes=discount_codes)
-
+'''
 '''
 @orders_bp.route("/orders", methods=["POST"])
 def create_order():
@@ -254,49 +256,51 @@ def create_order():
         flash(f"Error creating order: {str(e)}", "error")
         return redirect(url_for("orders.new_order"))
 '''
-@orders_bp.route("/orders", methods=["GET","POST"])
+@create_order_bp.route("/create_order", methods=["GET","POST"])
 def create_order():
-    customer_id = request.form.get("customer_id")
-    discount_id = request.form.get("discount_id") or None
-    delivery_address = request.form.get("delivery_address", "").strip()
-    postal_code = request.form.get("postal_code", "").strip()
-    action = request.form.get("action")  # "preview" or "create"
-
-    # Load base data
+    #load data
     customers = Customer.query.order_by(Customer.first_name).all()
     menu_items = MenuItem.query.order_by(MenuItem.item_id).all()
     discount_codes = DiscountCode.query.order_by(DiscountCode.discount_code).all()
 
-    customer = Customer.query.get(customer_id)
-    discount = DiscountCode.query.get(discount_id) if discount_id else None
-    delivery_person_id = assign_delivery_person(postal_code)
-
-    # Collect selected items
-    items = []
-    for item in menu_items:
-        try:
-            amount = int(request.form.get(f"item_{item.item_id}", 0))
-        except ValueError:
-            amount = 0
-        if amount > 0:
-            items.append((item, amount))
-
-    # Validation
-    if not customer or not items:
-        flash("Please select a valid customer and at least one menu item.", "error")
-        return redirect(url_for("orders.create_order"))
-
-    if delivery_person_id is None:
-        flash("No delivery person available for your postal code.", "error")
-        return redirect(url_for("orders.create_order"))
-
-    # Calculate raw price
-    raw_price = sum(item.price * amount for item, amount in items)
-    discounts = calculate_discounts(customer, discount, items, raw_price)
-
-    if action == "preview":
-        # Just show preview inside the same form
+    if request.method == "GET":
         return render_template("order_form.html",
+                               title="New Order",
+                               customers=customers,
+                               menu_items=menu_items,
+                               discount_codes=discount_codes)
+    
+    elif request.method == "POST":
+        customer_id = request.form.get("customer_id")
+        discount_id = request.form.get("discount_id") or None
+        delivery_address = request.form.get("delivery_address", "").strip()
+        postal_code = request.form.get("postal_code", "").strip()
+        action = request.form.get("action")  # "preview" or "create"
+
+        customer = Customer.query.get(customer_id)
+        discount = DiscountCode.query.get(discount_id) if discount_id else None
+
+        #collect selected order items
+        order_items = []
+        for item in menu_items:
+            try:
+                amount = int(request.form.get(f"item_{item.item_id}", 0))
+            except ValueError:
+                amount = 0
+            if amount > 0:
+                order_items.append((item, amount))
+
+        #validation
+        if not customer or not order_items:
+            flash("Please select a valid customer and at least one menu item.", "error")
+            return redirect(url_for("orders.create_order"))
+
+        raw_price = sum(item.price * amount for item, amount in order_items)
+        discounts = calculate_discounts(customer, raw_price, order_items, discount)
+
+        if action == "preview":
+            # Just show preview inside the same form
+            return render_template("order_form.html",
                                title="New Order",
                                customers=customers,
                                menu_items=menu_items,
@@ -305,50 +309,49 @@ def create_order():
                                total=discounts["total"],
                                messages=discounts["messages"])
 
-    elif action == "create":
-        try:
-            order = Order(
-                customer_id=customer.customer_id,
-                delivery_person_id=delivery_person_id,
-                discount_id=discount_id,
-                total_price=discounts["total"],
-                delivery_address=delivery_address,
-                postal_code=postal_code
-            )
-            db.session.add(order)
-            db.session.flush()
+        elif action == "create":
+            try:
+                order = Order(
+                    customer_id=customer.customer_id,
+                    delivery_person_id=assign_delivery_person(postal_code),
+                    discount_id=discount_id,
+                    delivery_address=delivery_address,
+                    postal_code=postal_code
+                )
+                db.session.add(order)
+                db.session.flush()
 
-            for mi, amt in items:
-                db.session.add(OrderItem(order_id=order.order_id,
-                                         item_id=mi.item_id,
-                                         amount=amt))
+                for item, amount in order_items:
+                    db.session.add(OrderItem(order_id=order.order_id,
+                                         item_id=item.item_id,
+                                         amount=amount))
 
-            db.session.commit()
-            flash("Order created successfully.", "success")
-            return redirect(url_for("orders.list_orders"))
+                db.session.commit()
+                flash("Order created successfully.", "success")
+                return redirect(url_for("orders.list_orders"))
 
-        except Exception as e:
-            db.session.rollback()
-            flash(f"Error creating order: {str(e)}", "error")
-            return redirect(url_for("orders.create_order"))
+            except Exception as e:
+                db.session.rollback()
+                flash(f"Error creating order: {str(e)}", "error")
+                return redirect(url_for("orders.create_order"))
 
-    # Fallback
-    return redirect(url_for("orders.create_order"))
-
+        # Fallback
+        return redirect(url_for("orders.create_order"))
 
 
 
-def assign_delivery_person(order):
+
+def assign_delivery_person(postal_code):
     dpersons = DeliveryPerson.query.all()
     for dps in dpersons:
         # TODO: look at how the post code string is parsed, put both in all caps no spaces
-        if dps.postal_code == order.postal_code:
+        if dps.postal_code.strip().upper() == postal_code.strip().upper():
             # TODO put the order in the queue of the delivery person.
             # where is that queue stored? do we need an extra column in the db?
             return dps.delivery_person_id
     return None
 
-def valid_birthday_discount(customer):
+def valid_birthday_discount(customer, this_order):
     if customer.birthday:
         # if the customer has already placed an order today they have already received their free pizza (every order contains pizza so that is always true)
         # decide: do we want to check if they have also used their free drink in that order?
@@ -360,8 +363,10 @@ def valid_birthday_discount(customer):
             if (
                 ord.order_time.day == date.today().day
                 and ord.order_time.month == date.today().month
+                and ord.order_time.year == date.today().year
             ):
-                return False
+                if (this_order != None and this_order != ord):
+                    return False
         return True
     return False
 
@@ -374,7 +379,7 @@ def calculate_discounts(customer, raw_price, order_items, discount_code):
     free_pizza = 0
     free_drink = 0
 
-    if valid_birthday_discount(customer):
+    if valid_birthday_discount(customer, None):
         free_pizza += 1
         free_drink += 1
         discounts_applied.append("happy birthday! you get one pizza and drink for free")
@@ -384,15 +389,15 @@ def calculate_discounts(customer, raw_price, order_items, discount_code):
     drink_prices = []
 
      # count amount of pizza's and put pizza and drink prices in a list
-    for item in order_items:
-        if item.menu_item.item_type == "pizza":
+    for menu_item, amount in order_items:
+        if menu_item.item_type == "pizza":
             # repeats the price in the list as many times as the item is in the order
-            pizza_prices.extend([item.menu_item.price] * item.amount)
-        elif item.menu_item.item_type == "drink":
-            drink_prices.extend([item.menu_item.price] * item.amount)
+            pizza_prices.extend([menu_item.price] * amount)
+        elif menu_item.item_type == "drink":
+            drink_prices.extend([menu_item.price] * amount)
 
     # apply 10 pizza discount with how many the remainder of division by 10 has increased 
-    ten_discount += (customer.total_pizzas_ordered + len(pizza_prices)) // 10 - (customer.total_pizzas_ordered // 10)
+    ten_discount = (customer.total_pizzas_ordered + len(pizza_prices)) // 10 - (customer.total_pizzas_ordered // 10)
     if ten_discount>0:
         free_pizza+=ten_discount
         discounts_applied.append(f"10-pizza discount applied ({ten_discount} free pizza('s))")
@@ -433,11 +438,6 @@ def set_discounts_to_used(order):
         if item.menu_item.item_type == "pizza":
             pizza_count += item.amount
 
-    if valid_birthday_discount(order):
-        # since they first use free birthday pizza, only then look at other free pizza discounts
+    if valid_birthday_discount(order.customer, order):
+        # since they first use free birthday pizza discount, only then look at other free pizza discounts
         pizza_count -= 1
-
-    # add the free pizza discounts they use for the rest of the order to the used discounts column
-    order.customer.ten_pizza_discount_used += min(
-        order.customer.available_ten_pizza_discount, pizza_count
-    )
