@@ -31,7 +31,7 @@ def create_app():
             '<a href="/menu-items">/menu-items</a>, '
             '<a href="/orders">/orders</a>, '
             '<a href="/ingredients">/ingredients</a>, '
-            '<a href="/ingredients">/create_order</a>, '
+            '<a href="/create_order">/create_order</a>, '
         )
 
     return app

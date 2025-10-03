@@ -10,7 +10,7 @@ ingredients_bp = Blueprint("ingredients", __name__)
 create_order_bp = Blueprint("create_order", __name__)
 
 
-# customers
+#customers
 @customers_bp.route("/customers")
 def list_customers():
     customers = Customer.query.order_by(Customer.customer_id).all()
@@ -56,7 +56,7 @@ def create_customer():
         return redirect(url_for("customers.new_customer"))
 
 
-# Menu display
+# menu display
 @menu_items_bp.route("/")
 def list_menu_items():
     pizzas = Pizza.query.all()
@@ -112,8 +112,6 @@ def create_menu_item():
         flash(f"Error creating menu item: {str(e)}", "error")
         return redirect(url_for("menu_items.new_menu_item"))
 
-
-# Ingredient display
 @ingredients_bp.route("/ingredients")
 def list_ingredients():
     ingredients = Ingredient.query.order_by(Ingredient.ingredient_id).all()
@@ -169,93 +167,6 @@ def list_orders():
         orders_with_totals.append((order, discounts))
     return render_template("orders.html", orders_with_totals=orders_with_totals)
 
-'''
-@orders_bp.route("/orders/new")
-def new_order():
-    customers = Customer.query.order_by(Customer.first_name).all()
-    menu_items = MenuItem.query.order_by(MenuItem.item_id).all()  # can't order by .name (Python property)
-    delivery_persons = DeliveryPerson.query.order_by(DeliveryPerson.delivery_person_first_name).all()
-    discount_codes = DiscountCode.query.order_by(DiscountCode.discount_code).all()
-    return render_template("order_form.html", title="New Order", 
-                         customers=customers, menu_items=menu_items,
-                         delivery_persons=delivery_persons, discount_codes=discount_codes)
-'''
-'''
-@orders_bp.route("/orders", methods=["POST"])
-def create_order():
-    customer_id = request.form.get("customer_id")
-    discount_id = request.form.get("discount_id") or None
-    delivery_address = request.form.get("delivery_address", "").strip()
-    postal_code = request.form.get("postal_code", "").strip()
-    menu_item_id = request.form.get("menu_item_id")
-    amount = request.form.get("amount", "1")
-
-    
-    if delivery_person_id is None:
-        flash("Order placement failed, no delivery person available in your postal code.", "error")
-
-    # Validate the amount
-    try:
-        amount = int(amount)
-        if amount < 1:
-            amount = 1
-    except:
-        amount = 1
-    
-    customer = Customer.query.get(customer_id)
-    delivery_person_id = assign_delivery_person(postal_code)
-    menu_item = MenuItem.query.get(menu_item_id)
-
-    # Check if objects exist
-    if not customer or not menu_item:
-        flash("Please select valid customer and menu item.", "error")
-        return redirect(url_for("orders.new_order"))
-    
-    # Check if a delivery persion is found
-    if delivery_person_id is None:
-        flash("No delivery person available for your postal code.", "error")
-        return redirect(url_for("orders.new_order"))
-    
-    #TODO: check if there is at least one pizza
-    
-    try:
-        # Calculate total price without discount
-        total_price = float(menu_item.price) * amount   # use .price property
-        
-        # Apply discount if provided
-        if discount_id:
-            discount = DiscountCode.query.get(discount_id)
-            if discount:
-                total_price = total_price * (1 - discount.percentage / 100)
-        
-        order = Order(
-            customer_id=customer.customer_id,
-            delivery_person_id=delivery_person_id,
-            discount_id=discount_id,
-            total_price=total_price,
-            delivery_address=delivery_address,
-            postal_code=postal_code
-        )
-        db.session.add(order)
-        db.session.flush()  # Get order ID
-        
-        # Add order item
-        order_item = OrderItem(
-            order_id=order.order_id,
-            item_id=menu_item.item_id,
-            amount=amount
-        )
-        db.session.add(order_item)
-        db.session.commit()
-        
-        flash("Order created successfully.", "success")
-        return redirect(url_for("orders.list_orders"))
-    except Exception as e:
-        # Something went wrong - undo everything
-        db.session.rollback()
-        flash(f"Error creating order: {str(e)}", "error")
-        return redirect(url_for("orders.new_order"))
-'''
 @create_order_bp.route("/create_order", methods=["GET","POST"])
 def create_order():
     #load data
@@ -338,9 +249,6 @@ def create_order():
         # Fallback
         return redirect(url_for("orders.create_order"))
 
-
-
-
 def assign_delivery_person(postal_code):
     dpersons = DeliveryPerson.query.all()
     for dps in dpersons:
@@ -369,7 +277,6 @@ def valid_birthday_discount(customer, this_order):
                     return False
         return True
     return False
-
 
 def calculate_discounts(customer, raw_price, order_items, discount_code):
     subtotal = raw_price
@@ -423,7 +330,6 @@ def calculate_discounts(customer, raw_price, order_items, discount_code):
         discounts_applied.append(f"discount code applied, {discount_code.percentage}% off")
 
     return {"total": round(subtotal, 2), "messages": discounts_applied}
-
 
 def set_discounts_to_used(order):
     # for birthday discounts we automatically check if it was already used so we dont do that here

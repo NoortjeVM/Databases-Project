@@ -19,11 +19,11 @@
         <td>€ {{ '%.2f'|format(ingredient.price) }}</td>
         <td class="dietary-info">
           {% if ingredient.vegan %}
-            <span class="vegan">🌱 Vegan</span>
+            <span>Vegan</span>
           {% elif ingredient.vegetarian %}
-            <span class="vegetarian">🥬 Vegetarian</span>
+            <span >Vegetarian</span>
           {% else %}
-            <span>🥩 Non-vegetarian</span>
+            <span>Non-vegetarian</span>
           {% endif %}
         </td>
       </tr>
