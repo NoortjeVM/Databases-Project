@@ -35,7 +35,7 @@
         <td>{{ order.delivery_address or "Not specified" }}</td>
         <td>{{ order.order_time.strftime('%Y-%m-%d %H:%M') }}</td>
         <td>{{ order.pickup_time.strftime('%Y-%m-%d %H:%M') }}</td>
-        <td>{{ order.expected_delivery_time.strftime('%Y-%m-%d %H:%M") }}</td>
+        <td>{{ order.expected_delivery_time.strftime('%Y-%m-%d %H:%M') }}</td>
         <td>
           {% if order.status == 'delivered' %}
             <span style="color: green;">✓ Delivered</span>

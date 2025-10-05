@@ -235,13 +235,13 @@ def create_order():
         elif action == "create":
             try:
                 order = Order(
-                    customer_id=customer.customer_id,
-                    delivery_person_id=assign_delivery_person(postal_code),
-                    discount_id=discount_id,
-                    delivery_address=delivery_address,
-                    postal_code=postal_code,
-                    pickup_time=pickup_time,
-                    expected_delivery_time=expected_delivery_time
+                customer_id=customer.customer_id,
+                delivery_person_id=delivery_person_id,  # Use the unpacked variable
+                discount_id=discount_id,
+                delivery_address=delivery_address,
+                postal_code=postal_code,
+                pickup_time=pickup_time,  # Use the unpacked variable
+                expected_delivery_time=expected_delivery_time  # Use the unpacked variable
                 )
                 db.session.add(order)
                 db.session.flush()
@@ -267,10 +267,10 @@ def create_order():
             except Exception as e:
                 db.session.rollback()
                 flash(f"Error creating order: {str(e)}", "error")
-                return redirect(url_for("orders.create_order"))
+                return redirect(url_for("create_order.create_order"))
 
         # Fallback
-        return redirect(url_for("orders.create_order"))
+        return redirect(url_for("create_order.create_order"))
 
 def assign_delivery_person(postal_code):
     """

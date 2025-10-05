@@ -245,9 +245,18 @@ class Order(db.Model):
         """
         now = datetime.now(ZoneInfo("Europe/Amsterdam"))
         
-        if now >= self.expected_delivery_time:
+        # Make datetime values timezone-aware if they aren't already
+        expected_delivery = self.expected_delivery_time
+        if expected_delivery.tzinfo is None:
+            expected_delivery = expected_delivery.replace(tzinfo=ZoneInfo("Europe/Amsterdam"))
+        
+        pickup = self.pickup_time
+        if pickup.tzinfo is None:
+            pickup = pickup.replace(tzinfo=ZoneInfo("Europe/Amsterdam"))
+        
+        if now >= expected_delivery:
             return 'delivered'
-        elif now >= self.pickup_time:
+        elif now >= pickup:
             return 'out_for_delivery'
         else:
             return 'pending'
