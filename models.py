@@ -1,7 +1,8 @@
 from datetime import datetime
 import math
 from flask_sqlalchemy import SQLAlchemy
-from datetime import date
+from datetime import date, timezone
+from zoneinfo import ZoneInfo
 
 db = SQLAlchemy()
 
@@ -163,6 +164,7 @@ class DeliveryPerson(db.Model):
     delivery_person_first_name = db.Column(db.String(32), nullable=False)
     delivery_person_last_name = db.Column(db.String(32), nullable=False)
     postal_code = db.Column(db.String(6), nullable=False)
+    next_available_time = db.Column(db.DateTime, default=lambda: datetime.now(ZoneInfo("Europe/Amsterdam")), nullable=False)
     
     # Relationships
     orders = db.relationship("Order", back_populates="delivery_person")
@@ -170,6 +172,35 @@ class DeliveryPerson(db.Model):
     @property
     def full_name(self):
         return f"{self.delivery_person_first_name} {self.delivery_person_last_name}"
+    
+    @property
+    def is_available_now(self):
+        # Get current time in Dutch timezone
+        now_dutch = datetime.now(ZoneInfo("Europe/Amsterdam"))
+
+        # Make next_available_time timezone-aware if it isn't already
+        if self.next_available_time.tzinfo is None:
+            next_available = self.next_available_time.replace(tzinfo=ZoneInfo("Europe/Amsterdam"))
+        else:
+            next_available = self.next_available_time
+
+        # Check if delivery person is currently available
+        return now_dutch >= next_available
+    
+    @property
+    def minutes_until_available(self):
+        # Calculate minutes until delivery person is available
+        if self.is_available_now:
+            return 0
+        delta = self.next_available_time - datetime.now(ZoneInfo("Europe/Amsterdam"))
+        return int(delta.total_seconds() / 60)
+    
+    @property
+    def next_available_time_aware(self):
+        """Returns next_available_time as timezone-aware datetime"""
+        if self.next_available_time.tzinfo is None:
+            return self.next_available_time.replace(tzinfo=ZoneInfo("Europe/Amsterdam"))
+        return self.next_available_time
     
     def __repr__(self):
         return f"<DeliveryPerson {self.delivery_person_id} {self.full_name}>"
@@ -180,9 +211,11 @@ class Order(db.Model):
     customer_id = db.Column(db.Integer, db.ForeignKey("customer.customer_id"), nullable=False)
     discount_id = db.Column(db.Integer, db.ForeignKey("discount_code.discount_id"), nullable=True)
     delivery_person_id = db.Column(db.Integer, db.ForeignKey("delivery_person.delivery_person_id"), nullable=False)
-    order_time = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    order_time = db.Column(db.DateTime, default=lambda: datetime.now(ZoneInfo("Europe/Amsterdam")), nullable=False)
     delivery_address = db.Column(db.String(255), nullable=False)
     postal_code = db.Column(db.String(6), nullable=False)
+    pickup_time = db.Column(db.DateTime, nullable=False)
+    expected_delivery_time = db.Column(db.DateTime, nullable=False)
     
     # Relationships
     customer = db.relationship("Customer", back_populates="orders")
@@ -202,6 +235,34 @@ class Order(db.Model):
                 subtotal += item_total
         return subtotal
     
+    @property
+    def status(self):
+        """
+        Calculate status based on current time and delivery timestamps.
+        - pending: order placed, waiting for delivery person to pick up
+        - out_for_delivery: delivery person has picked up, on the way
+        - delivered: past expected delivery time
+        """
+        now = datetime.now(ZoneInfo("Europe/Amsterdam"))
+        
+        if now >= self.expected_delivery_time:
+            return 'delivered'
+        elif now >= self.pickup_time:
+            return 'out_for_delivery'
+        else:
+            return 'pending'
+    
+    @property
+    def status_display(self):
+        """Human-readable status with icon"""
+        status = self.status
+        if status == 'delivered':
+            return '✓ Delivered'
+        elif status == 'out_for_delivery':
+            return '🚚 Out for Delivery'
+        else:
+            return '⏳ Pending'
+        
     def __repr__(self):
         return f"<Order {self.order_id} customer={self.customer_id} total=${self.total_price}>"
 

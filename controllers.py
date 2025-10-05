@@ -1,7 +1,8 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from sqlalchemy.orm import selectinload
 from models import db, Customer, MenuItem, Order, OrderItem, Ingredient, Pizza, Drink, Dessert, DeliveryPerson, DiscountCode
-from datetime import date, datetime
+from datetime import date, datetime, timezone
+from zoneinfo import ZoneInfo
 
 customers_bp = Blueprint("customers", __name__)
 menu_items_bp = Blueprint("menu_items", __name__, url_prefix="/menu-items")
@@ -191,6 +192,9 @@ def create_order():
         customer = Customer.query.get(customer_id)
         discount = DiscountCode.query.get(discount_id) if discount_id else None
 
+        # Normalize postal code
+        postal_code = postal_code.replace(" ", "").upper()
+
         #collect selected order items
         order_items = []
         for item in menu_items:
@@ -205,7 +209,15 @@ def create_order():
         if not customer or not order_items:
             flash("Please select a valid customer and at least one menu item.", "error")
             return redirect(url_for("orders.create_order"))
-
+        
+        # Assign delivery person based on postal code
+        delivery_person_id, pickup_time, expected_delivery_time = assign_delivery_person(postal_code)
+    
+        # Check if a delivery person is found
+        if delivery_person_id is None:
+            flash("No delivery person available for your postal code.", "error")
+            return redirect(url_for("orders.new_order"))
+        
         raw_price = sum(item.price * amount for item, amount in order_items)
         discounts = calculate_discounts(customer, raw_price, order_items, discount)
 
@@ -227,7 +239,9 @@ def create_order():
                     delivery_person_id=assign_delivery_person(postal_code),
                     discount_id=discount_id,
                     delivery_address=delivery_address,
-                    postal_code=postal_code
+                    postal_code=postal_code,
+                    pickup_time=pickup_time,
+                    expected_delivery_time=expected_delivery_time
                 )
                 db.session.add(order)
                 db.session.flush()
@@ -236,9 +250,18 @@ def create_order():
                     db.session.add(OrderItem(order_id=order.order_id,
                                          item_id=item.item_id,
                                          amount=amount))
+            
+                # Update delivery person's availability
+                # They will be busy until they finish this delivery
+                delivery_person = DeliveryPerson.query.get(delivery_person_id)
+                delivery_person.next_available_time = expected_delivery_time
 
                 db.session.commit()
-                flash("Order created successfully.", "success")
+
+                # Show success message with timing information
+                pickup_str = pickup_time.strftime('%H:%M')
+                delivery_str = expected_delivery_time.strftime('%H:%M')
+                flash(f"Order created! Pickup at {pickup_str}, delivery by {delivery_str}.", "success")
                 return redirect(url_for("orders.list_orders"))
 
             except Exception as e:
@@ -250,14 +273,39 @@ def create_order():
         return redirect(url_for("orders.create_order"))
 
 def assign_delivery_person(postal_code):
-    dpersons = DeliveryPerson.query.all()
-    for dps in dpersons:
-        # TODO: look at how the post code string is parsed, put both in all caps no spaces
-        if dps.postal_code.strip().upper() == postal_code.strip().upper():
-            # TODO put the order in the queue of the delivery person.
-            # where is that queue stored? do we need an extra column in the db?
-            return dps.delivery_person_id
-    return None
+    """
+    Find a delivery person for the given postal code.
+    Returns (delivery_person_id, pickup_time, expected_delivery_time) tuple if found,
+    (None, None, None) otherwise.
+    """
+    from datetime import timedelta
+    
+    # Normalize postal code (remove spaces, convert to uppercase)
+    postal_code_normalized = postal_code.replace(" ", "").upper()
+    
+    # Query delivery person who serves this postal code
+    delivery_person = (
+        DeliveryPerson.query
+        .filter(DeliveryPerson.postal_code == postal_code_normalized)
+        .first()
+    )
+    
+    if not delivery_person:
+        return None, None, None
+    
+    # Calculate pickup and delivery times
+    now = datetime.now(ZoneInfo("Europe/Amsterdam"))
+    
+    # Make next_available_time timezone-aware if it's naive
+    next_available = delivery_person.next_available_time_aware
+    
+    # Now you can compare them
+    pickup_time = max(now, next_available)
+    
+    # Expected delivery time = pickup time + 30 minutes for delivery
+    expected_delivery_time = pickup_time + timedelta(minutes=30)
+    
+    return delivery_person.delivery_person_id, pickup_time, expected_delivery_time
 
 def valid_birthday_discount(customer, this_order):
     if customer.birthday:

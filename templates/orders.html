@@ -11,6 +11,9 @@
         <th>Delivery Person</th>
         <th>Delivery Address</th>
         <th>Order Time</th>
+        <th>Pickup Time</th>
+        <th>Expected Delivery Time</th>
+        <th>Status</th>
       </tr>
     </thead>
     <tbody>
@@ -31,6 +34,17 @@
         <td>{{ order.delivery_person.full_name }}</td>
         <td>{{ order.delivery_address or "Not specified" }}</td>
         <td>{{ order.order_time.strftime('%Y-%m-%d %H:%M') }}</td>
+        <td>{{ order.pickup_time.strftime('%Y-%m-%d %H:%M') }}</td>
+        <td>{{ order.expected_delivery_time.strftime('%Y-%m-%d %H:%M") }}</td>
+        <td>
+          {% if order.status == 'delivered' %}
+            <span style="color: green;">✓ Delivered</span>
+          {% elif order.status == 'out_for_delivery' %}
+            <span style="color: orange;">🚚 Out for Delivery</span>
+          {% else %}
+            <span style="color: blue;">⏳ Pending</span>
+          {% endif %}
+        </td>
       </tr>
       {% endfor %}
     </tbody>
