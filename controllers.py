@@ -214,10 +214,14 @@ def create_order():
             flash("No delivery person available for your postal code.", "error")
             return redirect(url_for("create_order.create_order"))
         
+        price_list = list_prices_by_type(order_items)
+        
         raw_price = sum(item.price * amount for item, amount in order_items)
-        discounts = calculate_discounts(customer, raw_price, order_items, discount)
+        discounts = calculate_discounts(customer, raw_price, price_list["pizzas"], price_list["drinks"], discount)
 
         if action == "preview":
+            if len(price_list["pizzas"]) < 1: 
+                flash("choose at least 1 pizza for a valid order")
             # Just show preview inside the same form
             return render_template("order_form.html",
                                title="New Order",
@@ -228,7 +232,12 @@ def create_order():
                                messages=discounts["messages"])
 
         elif action == "create":
+            
             try:
+                if len(price_list["pizzas"]) < 1:
+                    flash(f"Error creating order: choose at least 1 pizza for a valid order", "error")
+                    return redirect(url_for("create_order.create_order")) 
+                
                 order = Order(
                 customer_id=customer.customer_id,
                 delivery_person_id=delivery_person_id,  # Use the unpacked variable
@@ -269,6 +278,22 @@ def create_order():
 
         # Fallback
         return redirect(url_for("create_order.create_order"))
+
+
+#helper method for check constraint and discount calculations
+def list_prices_by_type(order_items):
+    pizza_prices = []
+    drink_prices = []
+
+     # count amount of pizza's and put pizza and drink prices in a list
+    for menu_item, amount in order_items:
+        if menu_item.item_type == "pizza":
+            # repeats the price in the list as many times as the item is in the order
+            pizza_prices.extend([menu_item.price] * amount)
+        elif menu_item.item_type == "drink":
+            drink_prices.extend([menu_item.price] * amount)
+    return {"pizzas": pizza_prices, "drinks": drink_prices}
+
 
 @staff_reports_bp.route("/staff_reports", methods=["GET"])
 def staff_reports():
@@ -324,11 +349,9 @@ def staff_reports():
             Customer.last_name,
             Customer.gender,
             Customer.birthdate,
-            func.sum(OrderItem.amount * MenuItem.price).label('total_spent')
+            func.sum(Order.total_price).label('total_spent')
         )
         .join(Order, Order.customer_id == Customer.customer_id)
-        .join(OrderItem, OrderItem.order_id == Order.order_id)
-        .join(MenuItem, MenuItem.item_id == OrderItem.item_id)
         .filter(extract('month', Order.order_time) == selected_month)
         .filter(extract('year', Order.order_time) == selected_year)
     )
@@ -356,7 +379,7 @@ def staff_reports():
         query
         .group_by(Customer.customer_id, Customer.first_name, Customer.last_name, 
                   Customer.gender, Customer.birthdate)
-        .order_by(func.sum(OrderItem.amount * MenuItem.price).desc())
+        .order_by(func.sum(Order.total_price).desc())
         .all()
     )
     
@@ -474,8 +497,8 @@ def valid_discount_code(customer, discount):
         
     return True
 
-#discount_code is the actual discountcode object, not a string
-def calculate_discounts(customer, raw_price, order_items, discount_code):
+#discount is the actual discountcode object, not a string
+def calculate_discounts(customer, raw_price, pizza_prices, drink_prices, discount):
     subtotal = raw_price
     discounts_applied = []
 
@@ -487,18 +510,6 @@ def calculate_discounts(customer, raw_price, order_items, discount_code):
         free_pizza += 1
         free_drink += 1
         discounts_applied.append("happy birthday! you get one pizza and drink for free")
-
-
-    pizza_prices = []
-    drink_prices = []
-
-     # count amount of pizza's and put pizza and drink prices in a list
-    for menu_item, amount in order_items:
-        if menu_item.item_type == "pizza":
-            # repeats the price in the list as many times as the item is in the order
-            pizza_prices.extend([menu_item.price] * amount)
-        elif menu_item.item_type == "drink":
-            drink_prices.extend([menu_item.price] * amount)
 
     # apply 10 pizza discount with how many the remainder of division by 10 has increased 
     ten_discount = (customer.total_pizzas_ordered + len(pizza_prices)) // 10 - (customer.total_pizzas_ordered // 10)
@@ -521,11 +532,11 @@ def calculate_discounts(customer, raw_price, order_items, discount_code):
             drink_prices.remove(cheapest)
 
     # Apply discount code if one is chosen and if it's valid
-    if discount_code:
-        if valid_discount_code(customer, discount_code) == True:
-            discount_multiplier = (100 - discount_code.percentage) / 100
+    if discount:
+        if valid_discount_code(customer, discount) == True:
+            discount_multiplier = (100 - discount.percentage) / 100
             subtotal *= discount_multiplier
-            discounts_applied.append(f"discount code applied, {discount_code.percentage}% off")
+            discounts_applied.append(f"discount code applied, {discount.percentage}% off")
         else:
             discounts_applied.append(f"discount code is invalid")
     
