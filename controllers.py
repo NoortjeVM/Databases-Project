@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from sqlalchemy.orm import selectinload
+from sqlalchemy import func, and_, extract
 from models import db, Customer, MenuItem, Order, OrderItem, Ingredient, Pizza, Drink, Dessert, DeliveryPerson, DiscountCode
 from datetime import date, datetime, timezone
 from zoneinfo import ZoneInfo
@@ -9,6 +10,7 @@ menu_items_bp = Blueprint("menu_items", __name__, url_prefix="/menu-items")
 orders_bp = Blueprint("orders", __name__)
 ingredients_bp = Blueprint("ingredients", __name__)
 create_order_bp = Blueprint("create_order", __name__)
+staff_reports_bp = Blueprint("staff_reports", __name__)
 
 
 #customers
@@ -271,6 +273,129 @@ def create_order():
 
         # Fallback
         return redirect(url_for("create_order.create_order"))
+
+@staff_reports_bp.route("/staff_reports", methods=["GET"])
+def staff_reports():
+    from datetime import timedelta
+    from sqlalchemy import func, extract
+    
+    # Calculate date one month ago for top pizzas
+    one_month_ago = datetime.now(ZoneInfo("Europe/Amsterdam")) - timedelta(days=30)
+    
+    # Query top 3 pizzas sold in the last month
+    top_pizzas = (
+        db.session.query(
+            Pizza.name,
+            func.sum(OrderItem.amount).label('total_sold')
+        )
+        .join(MenuItem, MenuItem.item_ref_id == Pizza.pizza_id)
+        .join(OrderItem, OrderItem.item_id == MenuItem.item_id)
+        .join(Order, Order.order_id == OrderItem.order_id)
+        .filter(MenuItem.item_type == 'pizza')
+        .filter(Order.order_time >= one_month_ago)
+        .group_by(Pizza.pizza_id, Pizza.name)
+        .order_by(func.sum(OrderItem.amount).desc())
+        .limit(3)
+        .all()
+    )
+    
+    # Monthly earnings report logic
+    # Get filter parameters from query string
+    gender_filter = request.args.get('gender', type=int)
+    min_age = request.args.get('min_age', type=int)
+    max_age = request.args.get('max_age', type=int)
+    postal_code_filter = request.args.get('postal_code', '').strip().replace(" ", "").upper()
+    
+    # Get selected month and year (default to current month)
+    now = datetime.now(ZoneInfo("Europe/Amsterdam"))
+    selected_month = request.args.get('month', default=now.month, type=int)
+    selected_year = request.args.get('year', default=now.year, type=int)
+    
+    # Build the base query for monthly earnings
+    query = (
+        db.session.query(
+            Customer.customer_id,
+            Customer.first_name,
+            Customer.last_name,
+            Customer.gender,
+            Customer.birthdate,
+            func.sum(OrderItem.amount * MenuItem.price).label('total_spent')
+        )
+        .join(Order, Order.customer_id == Customer.customer_id)
+        .join(OrderItem, OrderItem.order_id == Order.order_id)
+        .join(MenuItem, MenuItem.item_id == OrderItem.item_id)
+        .filter(extract('month', Order.order_time) == selected_month)
+        .filter(extract('year', Order.order_time) == selected_year)
+    )
+    
+    # Apply filters
+    if gender_filter is not None:
+        query = query.filter(Customer.gender == gender_filter)
+    
+    if min_age is not None or max_age is not None:
+        today = date.today()
+        if max_age is not None:
+            # Customer must be born after this date to be younger than max_age
+            min_birthdate = date(today.year - max_age - 1, today.month, today.day)
+            query = query.filter(Customer.birthdate > min_birthdate)
+        if min_age is not None:
+            # Customer must be born before this date to be older than min_age
+            max_birthdate = date(today.year - min_age, today.month, today.day)
+            query = query.filter(Customer.birthdate <= max_birthdate)
+    
+    if postal_code_filter:
+        query = query.filter(Order.postal_code == postal_code_filter)
+    
+    # Group by customer and order by total spent
+    results = (
+        query
+        .group_by(Customer.customer_id, Customer.first_name, Customer.last_name, 
+                  Customer.gender, Customer.birthdate)
+        .order_by(func.sum(OrderItem.amount * MenuItem.price).desc())
+        .all()
+    )
+    
+    # Calculate total earnings
+    total_earnings = sum(r.total_spent for r in results) if results else 0
+    
+    # Calculate age for each customer
+    customers_with_age = []
+    for r in results:
+        age = calculate_age(r.birthdate)
+        customers_with_age.append({
+            'customer_id': r.customer_id,
+            'full_name': f"{r.first_name} {r.last_name}",
+            'gender': r.gender,
+            'age': age,
+            'total_spent': float(r.total_spent)
+        })
+    
+    # Get available years for dropdown (from first order to current year)
+    first_order = db.session.query(func.min(Order.order_time)).scalar()
+    available_years = range(first_order.year, now.year + 1) if first_order else [now.year]
+    
+    return render_template("staff_reports.html",
+                         title="Staff Reports",
+                         top_pizzas=top_pizzas,
+                         customers=customers_with_age,
+                         total_earnings=total_earnings,
+                         selected_month=selected_month,
+                         selected_year=selected_year,
+                         available_years=available_years,
+                         filters={
+                             'gender': gender_filter,
+                             'min_age': min_age,
+                             'max_age': max_age,
+                             'postal_code': postal_code_filter
+                         })
+
+def calculate_age(birthdate):
+    """Calculate age from birthdate"""
+    today = date.today()
+    age = today.year - birthdate.year
+    if today.month < birthdate.month or (today.month == birthdate.month and today.day < birthdate.day):
+        age -= 1
+    return age
 
 def assign_delivery_person(postal_code):
     """

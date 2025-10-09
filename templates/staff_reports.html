@@ -1,0 +1,139 @@
+{% extends "layout.html" %}
+{% block content %}
+  <h2>Staff Reports</h2>
+  
+  <h3>Top 3 Pizzas Sold (Last 30 Days)</h3>
+  {% if top_pizzas %}
+  <table>
+    <thead>
+      <tr>
+        <th>Rank</th>
+        <th>Pizza Name</th>
+        <th>Total Sold</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for pizza in top_pizzas %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td>{{ pizza.name }}</td>
+        <td>{{ pizza.total_sold }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <p>No pizza sales in the last 30 days.</p>
+  {% endif %}
+
+  <hr style="margin: 2rem 0;">
+
+  <h3>Monthly Earnings Report</h3>
+  
+  <form method="get" action="{{ url_for('staff_reports.staff_reports') }}">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+      
+      <label>Month *
+        <select name="month" required>
+          {% for m in range(1, 13) %}
+          <option value="{{ m }}" {% if m == selected_month %}selected{% endif %}>
+            {{ ['January', 'February', 'March', 'April', 'May', 'June', 
+                'July', 'August', 'September', 'October', 'November', 'December'][m-1] }}
+          </option>
+          {% endfor %}
+        </select>
+      </label>
+
+      <label>Year *
+        <select name="year" required>
+          {% for y in available_years %}
+          <option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>{{ y }}</option>
+          {% endfor %}
+        </select>
+      </label>
+
+      <label>Gender
+        <select name="gender">
+          <option value="">All</option>
+          <option value="0" {% if filters.gender == 0 %}selected{% endif %}>Female</option>
+          <option value="1" {% if filters.gender == 1 %}selected{% endif %}>Male</option>
+          <option value="2" {% if filters.gender == 2 %}selected{% endif %}>Other</option>
+        </select>
+      </label>
+
+      <label>Minimum Age
+        <input type="number" name="min_age" min="0" max="120" 
+               value="{{ filters.min_age or '' }}" placeholder="e.g., 18">
+      </label>
+
+      <label>Maximum Age
+        <input type="number" name="max_age" min="0" max="120" 
+               value="{{ filters.max_age or '' }}" placeholder="e.g., 65">
+      </label>
+
+      <label>Postal Code
+        <input type="text" name="postal_code" 
+               value="{{ filters.postal_code or '' }}" placeholder="e.g., 1234AB">
+      </label>
+    </div>
+
+    <p>
+      <button class="btn btn-primary" type="submit">Apply Filters</button>
+      <a class="btn" href="{{ url_for('staff_reports.staff_reports') }}">Clear Filters</a>
+    </p>
+  </form>
+
+  <h4>Results for {{ ['January', 'February', 'March', 'April', 'May', 'June', 
+                      'July', 'August', 'September', 'October', 'November', 'December'][selected_month-1] }} {{ selected_year }}</h4>
+  
+  {% if filters.gender is not none or filters.min_age or filters.max_age or filters.postal_code %}
+  <p><strong>Active Filters:</strong>
+    {% if filters.gender is not none %}
+      Gender: {{ ['Female', 'Male', 'Other'][filters.gender] }}{% if filters.min_age or filters.max_age or filters.postal_code %}, {% endif %}
+    {% endif %}
+    {% if filters.min_age %}
+      Min Age: {{ filters.min_age }}{% if filters.max_age or filters.postal_code %}, {% endif %}
+    {% endif %}
+    {% if filters.max_age %}
+      Max Age: {{ filters.max_age }}{% if filters.postal_code %}, {% endif %}
+    {% endif %}
+    {% if filters.postal_code %}
+      Postal Code: {{ filters.postal_code }}
+    {% endif %}
+  </p>
+  {% endif %}
+
+  <h4>Total Earnings: € {{ '%.2f'|format(total_earnings) }}</h4>
+
+  {% if customers %}
+  <table>
+    <thead>
+      <tr>
+        <th>Customer ID</th>
+        <th>Name</th>
+        <th>Gender</th>
+        <th>Age</th>
+        <th>Total Spent</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for customer in customers %}
+      <tr>
+        <td>{{ customer.customer_id }}</td>
+        <td>{{ customer.full_name }}</td>
+        <td>
+          {% if customer.gender == 0 %}Female
+          {% elif customer.gender == 1 %}Male
+          {% elif customer.gender == 2 %}Other
+          {% else %}Not specified{% endif %}
+        </td>
+        <td>{{ customer.age }}</td>
+        <td>€ {{ '%.2f'|format(customer.total_spent) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <p>No customers match the selected criteria for this period.</p>
+  {% endif %}
+{% endblock %}

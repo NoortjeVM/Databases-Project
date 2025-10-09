@@ -36,6 +36,7 @@
           <a class="btn" href="{{ url_for('orders.list_orders') }}">Orders</a>
           <a class="btn" href="{{ url_for('ingredients.list_ingredients') }}">Ingredients</a>
           <a class="btn btn-success" href="{{ url_for('create_order.create_order') }}">Create Order</a>
+          <a class="btn" href="{{ url_for('staff_reports.staff_reports') }}">Staff Reports</a>
         </nav>
       </header>
       {% with messages = get_flashed_messages(with_categories=true) %}
