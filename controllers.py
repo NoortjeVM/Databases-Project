@@ -295,6 +295,15 @@ def staff_reports():
         .all()
     )
     
+    # Query undelivered orders (pending or out_for_delivery)
+    now = datetime.now(ZoneInfo("Europe/Amsterdam"))
+    all_orders = Order.query.order_by(Order.order_time.desc()).all()
+    
+    undelivered_orders = []
+    for order in all_orders:
+        if order.status in ['pending', 'out_for_delivery']:
+            undelivered_orders.append(order)
+
     # Monthly earnings report logic
     # Get filter parameters from query string
     gender_filter = request.args.get('gender', type=int)
@@ -373,6 +382,7 @@ def staff_reports():
     return render_template("staff_reports.html",
                          title="Staff Reports",
                          top_pizzas=top_pizzas,
+                         undelivered_orders=undelivered_orders,
                          customers=customers_with_age,
                          total_earnings=total_earnings,
                          selected_month=selected_month,

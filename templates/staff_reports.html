@@ -28,6 +28,49 @@
 
   <hr style="margin: 2rem 0;">
 
+  <h3>Undelivered Orders</h3>
+  {% if undelivered_orders %}
+  <table>
+    <thead>
+      <tr>
+        <th>Order ID</th>
+        <th>Customer</th>
+        <th>Delivery Address</th>
+        <th>Postal Code</th>
+        <th>Order Time</th>
+        <th>Expected Delivery</th>
+        <th>Delivery Person</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for order in undelivered_orders %}
+      <tr>
+        <td>{{ order.order_id }}</td>
+        <td>{{ order.customer.full_name }}</td>
+        <td>{{ order.delivery_address }}</td>
+        <td>{{ order.postal_code }}</td>
+        <td>{{ order.order_time.strftime('%Y-%m-%d %H:%M') }}</td>
+        <td>{{ order.expected_delivery_time.strftime('%Y-%m-%d %H:%M') }}</td>
+        <td>{{ order.delivery_person.full_name }}</td>
+        <td>
+          {% if order.status == 'out_for_delivery' %}
+            <span style="color: orange;">🚚 Out for Delivery</span>
+          {% else %}
+            <span style="color: blue;">⏳ Pending</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p><strong>Total undelivered orders: {{ undelivered_orders|length }}</strong></p>
+  {% else %}
+    <p>No undelivered orders at this time. All orders have been delivered! ✓</p>
+  {% endif %}
+
+  <hr style="margin: 2rem 0;">
+
   <h3>Monthly Earnings Report</h3>
   
   <form method="get" action="{{ url_for('staff_reports.staff_reports') }}">
