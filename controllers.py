@@ -187,7 +187,6 @@ def create_order():
         customer = Customer.query.get(customer_id)
         discount = DiscountCode.query.filter_by(discount_code=discount_code).first() if discount_code else None
 
-
         # Normalize postal code
         postal_code = postal_code.replace(" ", "").upper()
 
@@ -238,10 +237,12 @@ def create_order():
                     flash(f"Error creating order: choose at least 1 pizza for a valid order", "error")
                     return redirect(url_for("create_order.create_order")) 
                 
+                discount_id = discount.discount_id if discount else None
+
                 order = Order(
                 customer_id=customer.customer_id,
                 delivery_person_id=delivery_person_id,  # Use the unpacked variable
-                discount_id=discount.discount_id,
+                discount_id=discount_id,
                 delivery_address=delivery_address,
                 postal_code=postal_code,
                 pickup_time=pickup_time,  # Use the unpacked variable
