@@ -5,9 +5,10 @@
       <select name="customer_id" required>
         <option value="">-- Select customer --</option>
         {% for customer in customers %}
-        <option value="{{ customer.customer_id }}">
-          {{ customer.full_name }} ({{ customer.phone_number }})
-        </option>
+          <option value="{{ customer.customer_id }}"
+            {% if request.form.get('customer_id') == customer.customer_id|string %}selected{% endif %}>
+            {{ customer.full_name }} ({{ customer.phone_number }})
+          </option>
         {% endfor %}
       </select>
     </label>
@@ -21,7 +22,7 @@
     </label>
     
     <label>Discount Code (Optional)
-        <textarea name="discount_code" rows="1" >{{ request.form.discount_code }}</textarea>
+        <textarea name="discount_code" rows="1" >{{ request.form.discount_code or '' }}</textarea>
     </label>
 
     <h3>Select Items</h3>
