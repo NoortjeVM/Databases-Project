@@ -1,6 +1,7 @@
 from datetime import datetime
 import math
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import Numeric
 from datetime import date, timezone
 from zoneinfo import ZoneInfo
 
@@ -113,8 +114,7 @@ class Customer(db.Model):
     
     # Relationships
     orders = db.relationship("Order", back_populates="customer", cascade="all, delete-orphan")
-    discounts = db.relationship("DiscountCode", secondary="customer_discount", back_populates="customers")
-    
+
     @property
     def full_name(self):
         return f"{self.first_name} {self.last_name}"
@@ -145,18 +145,11 @@ class DiscountCode(db.Model):
     discount_code = db.Column(db.String(32), nullable=False, unique=True)
     
     # Relationships
-    customers = db.relationship("Customer", secondary="customer_discount", back_populates="discounts")
     orders = db.relationship("Order", back_populates="discount_code")
     
     def __repr__(self):
         return f"<DiscountCode {self.discount_id} {self.discount_code} {self.percentage}%>"
 
-# Association table for Customer-Discount many-to-many relationship
-customer_discount = db.Table('customer_discount',
-    db.Column('customer_id', db.Integer, db.ForeignKey('customer.customer_id'), primary_key=True),
-    db.Column('discount_id', db.Integer, db.ForeignKey('discount_code.discount_id'), primary_key=True),
-    db.Column('used', db.Boolean, nullable=False, default=False)
-)
 
 class DeliveryPerson(db.Model):
     __tablename__ = "delivery_person"
@@ -216,6 +209,7 @@ class Order(db.Model):
     postal_code = db.Column(db.String(6), nullable=False)
     pickup_time = db.Column(db.DateTime, nullable=False)
     expected_delivery_time = db.Column(db.DateTime, nullable=False)
+    total_price = db.Column(db.Numeric(8,2), nullable=False)
     
     # Relationships
     customer = db.relationship("Customer", back_populates="orders")

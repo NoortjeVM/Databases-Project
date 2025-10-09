@@ -21,14 +21,7 @@
     </label>
     
     <label>Discount Code (Optional)
-      <select name="discount_id">
-        <option value="">-- No discount --</option>
-        {% for discount in discount_codes %}
-        <option value="{{ discount.discount_id }}">
-          {{ discount.discount_code }} ({{ discount.percentage }}% off)
-        </option>
-        {% endfor %}
-      </select>
+        <textarea name="discount_code" rows="1" >{{ request.form.discount_code }}</textarea>
     </label>
 
     <h3>Select Items</h3>

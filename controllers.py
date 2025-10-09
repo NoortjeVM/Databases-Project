@@ -161,36 +161,30 @@ def create_ingredient():
 def list_orders():
     orders = Order.query.all()
     print(f"amount of orders: {len(orders)}")
-    orders_with_totals = []
-    for order in orders:
-        items = [(oi.menu_item, oi.amount) for oi in order.order_items]
-        discounts = calculate_discounts(order.customer, order.raw_price, items, order.discount_code)
-        orders_with_totals.append((order, discounts))
-    return render_template("orders.html", orders_with_totals=orders_with_totals)
+    return render_template("orders.html", orders=orders)
 
 @create_order_bp.route("/create_order", methods=["GET","POST"])
 def create_order():
     #load data
     customers = Customer.query.order_by(Customer.first_name).all()
     menu_items = MenuItem.query.order_by(MenuItem.item_id).all()
-    discount_codes = DiscountCode.query.order_by(DiscountCode.discount_code).all()
 
     if request.method == "GET":
         return render_template("order_form.html",
                                title="New Order",
                                customers=customers,
-                               menu_items=menu_items,
-                               discount_codes=discount_codes)
+                               menu_items=menu_items)
     
     elif request.method == "POST":
         customer_id = request.form.get("customer_id")
-        discount_id = request.form.get("discount_id") or None
+        discount_code = request.form.get("discount_code") or None
         delivery_address = request.form.get("delivery_address", "").strip()
         postal_code = request.form.get("postal_code", "").strip()
         action = request.form.get("action")  # "preview" or "create"
 
         customer = Customer.query.get(customer_id)
-        discount = DiscountCode.query.get(discount_id) if discount_id else None
+        discount = DiscountCode.query.filter_by(discount_code=discount_code).first() if discount_code else None
+
 
         # Normalize postal code
         postal_code = postal_code.replace(" ", "").upper()
@@ -208,7 +202,7 @@ def create_order():
         #validation
         if not customer or not order_items:
             flash("Please select a valid customer and at least one menu item.", "error")
-            return redirect(url_for("orders.create_order"))
+            return redirect(url_for("create_order.create_order"))
         
         # Assign delivery person based on postal code
         delivery_person_id, pickup_time, expected_delivery_time = assign_delivery_person(postal_code)
@@ -216,7 +210,7 @@ def create_order():
         # Check if a delivery person is found
         if delivery_person_id is None:
             flash("No delivery person available for your postal code.", "error")
-            return redirect(url_for("orders.new_order"))
+            return redirect(url_for("create_order.create_order"))
         
         raw_price = sum(item.price * amount for item, amount in order_items)
         discounts = calculate_discounts(customer, raw_price, order_items, discount)
@@ -227,7 +221,6 @@ def create_order():
                                title="New Order",
                                customers=customers,
                                menu_items=menu_items,
-                               discount_codes=discount_codes,
                                raw_price=raw_price,
                                total=discounts["total"],
                                messages=discounts["messages"])
@@ -237,11 +230,12 @@ def create_order():
                 order = Order(
                 customer_id=customer.customer_id,
                 delivery_person_id=delivery_person_id,  # Use the unpacked variable
-                discount_id=discount_id,
+                discount_id=discount.discount_id,
                 delivery_address=delivery_address,
                 postal_code=postal_code,
                 pickup_time=pickup_time,  # Use the unpacked variable
-                expected_delivery_time=expected_delivery_time  # Use the unpacked variable
+                expected_delivery_time=expected_delivery_time,  # Use the unpacked variable
+                total_price = discounts["total"]
                 )
                 db.session.add(order)
                 db.session.flush()
@@ -257,6 +251,8 @@ def create_order():
                 delivery_person.next_available_time = expected_delivery_time
 
                 db.session.commit()
+
+                set_discount_to_used(order) #puts any used idscount in the list of a customers used discounts
 
                 # Show success message with timing information
                 pickup_str = pickup_time.strftime('%H:%M')
@@ -307,25 +303,43 @@ def assign_delivery_person(postal_code):
     
     return delivery_person.delivery_person_id, pickup_time, expected_delivery_time
 
-def valid_birthday_discount(customer, this_order):
-    if customer.birthday:
-        # if the customer has already placed an order today they have already received their free pizza (every order contains pizza so that is always true)
-        # decide: do we want to check if they have also used their free drink in that order?
-        # -> I say no, just let them use birthday discount on the first order of that day.
+def valid_birthday_discount(customer):
+    if not customer.birthday:
+        return False
+        
+    # if the customer has already placed an order today they have already received their free pizza (every order contains pizza so that is always true)
+    # decide: do we want to check if they have also used their free drink in that order?
+    # -> no, just let them use birthday discount on the first order of that day.
 
-        # so check if they have already placed another order today
-        # (on which the discount was then automatically used) -> if not, they get free pizza and drink
-        for ord in customer.orders:
-            if (
-                ord.order_time.day == date.today().day
-                and ord.order_time.month == date.today().month
-                and ord.order_time.year == date.today().year
-            ):
-                if (this_order != None and this_order != ord):
-                    return False
-        return True
-    return False
+    # so check if they have already placed another order today
+    # (on which the discount was then automatically used) -> if not, they get free pizza and drink
+    for ord in customer.orders:
+        if (
+            ord.order_time.day == date.today().day
+            and ord.order_time.month == date.today().month
+            and ord.order_time.year == date.today().year
+        ):
+            return False
+    return True
+    
 
+
+def valid_discount_code(customer, discount):
+    # method that checks if a customer has already placed an order with this discount
+    if (discount is None):
+        return None
+
+    discounts = DiscountCode.query.all()
+    if (discount not in discounts):
+        return False
+    
+    for ord in customer.orders:
+        if ord.discount_id == discount.discount_id:
+            return False
+        
+    return True
+
+#discount_code is the actual discountcode object, not a string
 def calculate_discounts(customer, raw_price, order_items, discount_code):
     subtotal = raw_price
     discounts_applied = []
@@ -334,7 +348,7 @@ def calculate_discounts(customer, raw_price, order_items, discount_code):
     free_pizza = 0
     free_drink = 0
 
-    if valid_birthday_discount(customer, None):
+    if valid_birthday_discount(customer):
         free_pizza += 1
         free_drink += 1
         discounts_applied.append("happy birthday! you get one pizza and drink for free")
@@ -371,27 +385,22 @@ def calculate_discounts(customer, raw_price, order_items, discount_code):
             subtotal -= cheapest
             drink_prices.remove(cheapest)
 
-    # Apply discount code if one is chosen
+    # Apply discount code if one is chosen and if it's valid
     if discount_code:
-        discount_multiplier = (100 - discount_code.percentage) / 100
-        subtotal *= discount_multiplier
-        discounts_applied.append(f"discount code applied, {discount_code.percentage}% off")
-
+        if valid_discount_code(customer, discount_code) == True:
+            discount_multiplier = (100 - discount_code.percentage) / 100
+            subtotal *= discount_multiplier
+            discounts_applied.append(f"discount code applied, {discount_code.percentage}% off")
+        else:
+            discounts_applied.append(f"discount code is invalid")
+    
     return {"total": round(subtotal, 2), "messages": discounts_applied}
+    
 
-def set_discounts_to_used(order):
+def set_discount_to_used(order):
     # for birthday discounts we automatically check if it was already used so we dont do that here
-    # set discount code to used
-    # if order.discount_code:
-    # TODO: sql update such that customer_discount.used = True
 
-    # mark used free pizza discounts as used by changing field
-    # ten_pizza_discount_used in the db
-    pizza_count = 0
-    for item in order.order_items:
-        if item.menu_item.item_type == "pizza":
-            pizza_count += item.amount
-
-    if valid_birthday_discount(order.customer, order):
-        # since they first use free birthday pizza discount, only then look at other free pizza discounts
-        pizza_count -= 1
+    # set discount code in used discounts of the customer
+    if order.discount_code and valid_discount_code(order.customer, order.discount_code) == True:
+        order.customer.discounts.append(order.discount_code)
+        db.session.commit()
