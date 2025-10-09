@@ -287,11 +287,27 @@ def seed_data():
     if Customer.query.count() == 0:
         db.session.add_all([
             Customer(first_name="Mario", last_name="Rossi", birthdate=datetime(1985, 5, 15).date(),
-                     address="Via Roma 123", phone_number="+1234567890", gender=1),
+                    address="Via Roma 123", phone_number="+1234567890", gender=1),
             Customer(first_name="Luigi", last_name="Bianchi", birthdate=datetime(1990, 8, 22).date(),
-                     address="Via Milano 456", phone_number="+1234567891", gender=1),
+                    address="Via Milano 456", phone_number="+1234567891", gender=1),
             Customer(first_name="Maria", last_name="Verdi", birthdate=datetime(1988, 3, 10).date(),
-                     address="Via Napoli 789", phone_number="+1234567892", gender=0),
+                    address="Via Napoli 789", phone_number="+1234567892", gender=0),
+            Customer(first_name="Giulia", last_name="Conti", birthdate=datetime(1995, 11, 2).date(),
+                    address="Via Firenze 12", phone_number="+1234567893", gender=0),
+            Customer(first_name="Francesco", last_name="Moretti", birthdate=datetime(1982, 1, 28).date(),
+                    address="Via Torino 45", phone_number="+1234567894", gender=1),
+            Customer(first_name="Chiara", last_name="Gallo", birthdate=datetime(1999, 7, 16).date(),
+                    address="Corso Venezia 77", phone_number="+1234567895", gender=0),
+            Customer(first_name="Lorenzo", last_name="Ricci", birthdate=datetime(1978, 9, 9).date(),
+                    address="Piazza Duomo 3", phone_number="+1234567896", gender=1),
+            Customer(first_name="Sara", last_name="Marini", birthdate=datetime(1993, 4, 4).date(),
+                    address="Via Trieste 21", phone_number="+1234567897", gender=0),
+            Customer(first_name="Elena", last_name="Romano", birthdate=datetime(2001, 6, 30).date(),
+                    address="Via Genova 88", phone_number="+1234567898", gender=0),
+            Customer(first_name="Davide", last_name="Giordano", birthdate=datetime(1987, 12, 19).date(),
+                    address="Viale Garibaldi 9", phone_number="+1234567899", gender=1),
+            Customer(first_name="Alessia", last_name="Barbieri", birthdate=datetime(1996, 2, 14).date(),
+                    address="Via Bologna 56", phone_number="+1234567800", gender=0),
         ])
 
     # Delivery people
@@ -317,6 +333,7 @@ def seed_data():
             Ingredient(ingredient_name="Basil", price=0.75, vegetarian=True, vegan=True),
             Ingredient(ingredient_name="Parmesan", price=2.20, vegetarian=True, vegan=False),
             Ingredient(ingredient_name="Gorgonzola", price=2.30, vegetarian=True, vegan=False),
+            Ingredient(ingredient_name="Vegan Mozzarella", price=2.00, vegetarian=True, vegan=True),
         ])
     db.session.flush()  # so ingredient IDs exist
 
@@ -334,6 +351,7 @@ def seed_data():
         basil = Ingredient.query.filter_by(ingredient_name="Basil").first()
         parmesan = Ingredient.query.filter_by(ingredient_name="Parmesan").first()
         gorgonzola = Ingredient.query.filter_by(ingredient_name="Gorgonzola").first()
+        vegan_mozzarella = Ingredient.query.filter_by(ingredient_name="Vegan Mozzarella").first()
 
         pizzas = [
             Pizza(name="Margherita", ingredients=[tomato, mozzarella, basil]),
@@ -344,6 +362,9 @@ def seed_data():
             Pizza(name="Meat Feast", ingredients=[tomato, mozzarella, ham, pepperoni]),
             Pizza(name="Capricciosa", ingredients=[tomato, mozzarella, ham, mushrooms, olives]),
             Pizza(name="Funghi", ingredients=[tomato, mozzarella, mushrooms]),
+            Pizza(name="Vegan Garden", ingredients=[tomato, vegan_mozzarella, peppers, onions, mushrooms, olives]),
+            Pizza(name="Vegan Tropical", ingredients=[tomato, vegan_mozzarella, pineapple, peppers, onions]),
+            Pizza(name="Vegan Classic", ingredients=[tomato, vegan_mozzarella, basil, mushrooms, olives]),
         ]
         db.session.add_all(pizzas)
         db.session.flush()
@@ -354,6 +375,13 @@ def seed_data():
             Drink(name="Coca Cola", price=2.50),
             Drink(name="Water", price=1.00),
             Drink(name="Fanta", price=2.20),
+            Drink(name="Sprite", price=2.20),
+            Drink(name="Coca Cola Zero", price=2.50),
+            Drink(name="Iced Tea", price=2.30),
+            Drink(name="Sparkling Water", price=1.50),
+            Drink(name="Lemonade", price=2.00),
+            Drink(name="Apple Juice", price=2.40),
+            Drink(name="Beer", price=3.00),
         ]
         db.session.add_all(drinks)
         db.session.flush()
@@ -363,6 +391,13 @@ def seed_data():
         desserts = [
             Dessert(name="Tiramisu", price=4.00),
             Dessert(name="Panna Cotta", price=3.50),
+            Dessert(name="Tiramisu", price=4.00),
+            Dessert(name="Panna Cotta", price=3.50),
+            Dessert(name="Gelato", price=3.00),
+            Dessert(name="Chocolate Lava Cake", price=4.50),
+            Dessert(name="Fruity Sorbet", price=3.80),
+            Dessert(name="Affogato", price=3.50),
+            Dessert(name="Cheesecake", price=4.20),
         ]
         db.session.add_all(desserts)
         db.session.flush()
