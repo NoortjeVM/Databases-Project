@@ -185,7 +185,6 @@ def create_order():
     elif request.method == "POST":
         customer_id = request.form.get("customer_id")
         discount_code = request.form.get("discount_code") or None
-        delivery_address = request.form.get("delivery_address", "").strip()
         postal_code = request.form.get("postal_code", "").strip()
         action = request.form.get("action")  # "preview" or "create"
         request.form.get("use_customer_address")
@@ -195,9 +194,11 @@ def create_order():
 
         if request.form.get("use_customer_address"):
             postal_code = customer.postal_code
+            delivery_address=customer.address
         else:
-            # Normalize postal code from input
+            # normalize postal code and address from input fields
             postal_code = postal_code.replace(" ", "").upper()
+            delivery_address = request.form.get("delivery_address", "").strip()
 
         #collect selected order items
         order_items = []
@@ -272,8 +273,6 @@ def create_order():
                 delivery_person.next_available_time = expected_delivery_time
 
                 db.session.commit()
-
-                set_discount_to_used(order) #puts any used idscount in the list of a customers used discounts
 
                 # Show success message with timing information
                 pickup_str = pickup_time.strftime('%H:%M')
@@ -552,11 +551,3 @@ def calculate_discounts(customer, raw_price, pizza_prices, drink_prices, discoun
     
     return {"total": round(subtotal, 2), "messages": discounts_applied}
     
-
-def set_discount_to_used(order):
-    # for birthday discounts we automatically check if it was already used so we dont do that here
-
-    # set discount code in used discounts of the customer
-    if order.discount_code and valid_discount_code(order.customer, order.discount_code) == True:
-        order.customer.discounts.append(order.discount_code)
-        db.session.commit()
