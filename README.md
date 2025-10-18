@@ -71,7 +71,7 @@ app.config["SQLALCHEMY_DATABASE_URI"] = "mysql+pymysql://username:password@local
 Replace `username` and `password` with your MySQL username and password.
 
 ### 5. Initialize Database
-The database tables will be created automatically when you first run the application. Sample data will also be seeded automatically.
+The database tables will be created automatically when you first run the application. Sample data will also be seeded automatically, using Fake for e.g. customer names and adresses. The sample menu items and ingredients where generated using ChatGPT (since fake can't generate realistic data for for instance pizza names).
 
 ---
 
@@ -111,16 +111,16 @@ http://localhost:5000
 ## Sample Data
 
 The application automatically seeds sample data on first run:
-- 11 customers with varied demographic information
-- 3 delivery persons covering different postal codes
+- 3 delivery persons covering 3 different postal codes in Maastricht
+- 11 customers that live in those postal codes 
 - 13 ingredients (including vegan options)
-- 11 pizzas with different ingredient combinations
-- 10 drinks
-- 7 desserts
+- 10 pizzas with different ingredient combinations
+- 4 drinks
+- 3 desserts
 - 3 discount codes
 - 20 orders
 
-This seed data can be find in at the bottom of the file [models.py](models.py)
+This seed data can be found in at the bottom of the file [models.py](models.py)
 
 ---
 
