@@ -51,7 +51,8 @@ class Pizza(db.Model):
 
     @property
     def price(self):
-        return float(sum(ing.price for ing in self.ingredients))
+        temporary_pizza_price = float(sum(ing.price for ing in self.ingredients))
+        return float(temporary_pizza_price*1.4*1.09)
 
     @property
     def label(self):
