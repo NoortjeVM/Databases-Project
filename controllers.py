@@ -43,6 +43,15 @@ def create_customer():
     
     try:
         birthdate = datetime.strptime(birthdate_str, '%Y-%m-%d').date()
+
+        # Check the today's date
+        today = date.today()
+        
+        # Check if birthdate is not in the future
+        if birthdate > today:
+            flash("Birthdate cannot be in the future.", "error")
+            return redirect(url_for("customers.new_customer"))
+        
         gender_val = int(gender) if gender else None
         customer = Customer(
             first_name=first_name,

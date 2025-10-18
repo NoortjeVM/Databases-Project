@@ -70,6 +70,11 @@ class Drink(db.Model):
     drink_id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50), nullable=False)
     price = db.Column(db.Numeric(8, 2), nullable=False)
+
+    # Check constraint for price
+    __table_args__ = (
+    db.CheckConstraint('price > 0', name='check_drink_price_positive'),
+    )
     
     def __repr__(self):
         return f"<Drink {self.name} price {self.price}>"
@@ -91,6 +96,11 @@ class Ingredient(db.Model):
     vegetarian = db.Column(db.Boolean, nullable=False, default=False)
     vegan = db.Column(db.Boolean, nullable=False, default=False)
     
+    # Check constraint for price
+    __table_args__ = (
+    db.CheckConstraint('price > 0', name='check_ingredient_price_positive'),
+    )
+
     # Relationships
     pizzas = db.relationship("Pizza", secondary="pizza_ingredient", back_populates="ingredients")
 
@@ -113,7 +123,7 @@ class Customer(db.Model):
     postal_code = db.Column(db.String(6), nullable=False) 
     phone_number = db.Column(db.String(32), nullable=False, unique=True)
     gender = db.Column(db.Integer)  # 0, 1, 2 for different gender options
-    
+
     # Relationships
     orders = db.relationship("Order", back_populates="customer", cascade="all, delete-orphan")
 
@@ -212,6 +222,11 @@ class Order(db.Model):
     pickup_time = db.Column(db.DateTime, nullable=False) 
     total_price = db.Column(db.Numeric(8,2), nullable=False)
     
+    # Check constraint for total price
+    __table_args__ = (
+    db.CheckConstraint('total_price > 0', name='check_order_total_price_positive'),
+    )
+
     # Relationships
     customer = db.relationship("Customer", back_populates="orders")
     discount_code = db.relationship("DiscountCode", back_populates="orders")
@@ -436,7 +451,7 @@ def seed_data():
                 pickup_time=pickup_time,
                 delivery_address=fake.street_address(),
                 postal_code=customer.postal_code,
-                total_price=0,
+                total_price=1.0,
             )
             db.session.add(order)
             db.session.flush()
