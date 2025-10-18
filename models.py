@@ -304,8 +304,8 @@ class OrderItem(db.Model):
 
 
 def seed_data():
-    db.drop_all()
-    db.create_all()
+    #db.drop_all()
+    #db.create_all()
     fake = Faker("nl_NL")
     postal_codes = ['6221AX', '6211RZ', '6215PD']
 
@@ -341,6 +341,7 @@ def seed_data():
         db.session.add_all([
             Ingredient(ingredient_name="Tomato Sauce", price=1.50, vegetarian=True, vegan=True),
             Ingredient(ingredient_name="Mozzarella", price=2.00, vegetarian=True, vegan=False),
+            Ingredient(ingredient_name="Vegan Mozzarella", price=3.00, vegetarian=True, vegan=True),
             Ingredient(ingredient_name="Pepperoni", price=2.50, vegetarian=False, vegan=False),
             Ingredient(ingredient_name="Mushrooms", price=1.75, vegetarian=True, vegan=True),
             Ingredient(ingredient_name="Bell Peppers", price=1.25, vegetarian=True, vegan=True),
@@ -368,11 +369,14 @@ def seed_data():
         basil = Ingredient.query.filter_by(ingredient_name="Basil").first()
         parmesan = Ingredient.query.filter_by(ingredient_name="Parmesan").first()
         gorgonzola = Ingredient.query.filter_by(ingredient_name="Gorgonzola").first()
+        vegan_mozzarella = Ingredient.query.filter_by(ingredient_name="Vegan Mozzarella").first()
 
         pizzas = [
             Pizza(name="Margherita", ingredients=[tomato, mozzarella, basil]),
+            Pizza(name="Vegan Margherita", ingredients=[tomato, vegan_mozzarella, basil]),
             Pizza(name="Pepperoni", ingredients=[tomato, mozzarella, pepperoni]),
             Pizza(name="Veggie Deluxe", ingredients=[tomato, mozzarella, mushrooms, peppers, onions, olives]),
+            Pizza(name="Vegan Deluxe", ingredients=[tomato, vegan_mozzarella, mushrooms, peppers, onions, olives]),
             Pizza(name="Hawaiian", ingredients=[tomato, mozzarella, ham, pineapple]),
             Pizza(name="Four Cheese", ingredients=[tomato, mozzarella, parmesan, gorgonzola]),
             Pizza(name="Meat Feast", ingredients=[tomato, mozzarella, ham, pepperoni]),
@@ -398,6 +402,7 @@ def seed_data():
         desserts = [
             Dessert(name="Tiramisu", price=4.00),
             Dessert(name="Panna Cotta", price=3.50),
+            Dessert(name="Brownie", price=2.50)
         ]
         db.session.add_all(desserts)
         db.session.flush()

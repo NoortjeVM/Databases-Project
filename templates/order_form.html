@@ -18,11 +18,11 @@
              {% if request.form.get("use_customer_address") %} checked{% endif %}>
     </label>
     
-    <label>Postal Code *
+    <label>Postal Code
       <input type="text" name="postal_code" value="{{ request.form.postal_code or '' }}">
     </label>
 
-    <label>Delivery Address *
+    <label>Delivery Address
       <textarea name="delivery_address" rows="2" >{{ request.form.delivery_address or '' }}</textarea>
     </label>
     

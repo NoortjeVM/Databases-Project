@@ -71,7 +71,7 @@ app.config["SQLALCHEMY_DATABASE_URI"] = "mysql+pymysql://username:password@local
 Replace `username` and `password` with your MySQL username and password.
 
 ### 5. Initialize Database
-The database tables will be created automatically when you first run the application. Sample data will also be seeded automatically.
+The database tables will be created automatically when you first run the application. Sample data will also be seeded automatically, using Fake for e.g. customer names and adresses. The sample menu items and ingredients where generated using ChatGPT (since fake can't generate realistic data for for instance pizza names).
 
 ---
 
@@ -111,16 +111,16 @@ http://localhost:5000
 ## Sample Data
 
 The application automatically seeds sample data on first run:
-- 11 customers with varied demographic information
-- 3 delivery persons covering different postal codes
+- 3 delivery persons covering 3 different postal codes in Maastricht
+- 11 customers that live in those postal codes 
 - 13 ingredients (including vegan options)
-- 11 pizzas with different ingredient combinations
-- 10 drinks
-- 7 desserts
+- 10 pizzas with different ingredient combinations
+- 4 drinks
+- 3 desserts
 - 3 discount codes
 - 20 orders
 
-This seed data can be find in at the bottom of the file [models.py](models.py)
+This seed data can be found in at the bottom of the file [models.py](models.py)
 
 ---
 
@@ -137,12 +137,13 @@ This seed data can be find in at the bottom of the file [models.py](models.py)
 - Drinks and desserts have fixed prices set in the system
 
 ### Discount Rules
+implementation of the discount logic can be found in the methods calculate_discounts(), valid_discount_code() and valid_birthday_discount in [controllers.py] (controllers.py)
 
 #### 1. Birthday Discount
 - **Eligibility**: Automatically applied on customer's birthday
 - **Benefit**: One free pizza (cheapest) + one free drink (cheapest)
 - **Limitation**: Only valid for the first order placed on birthday
-- **Logic**: System checks if customer's birthdate matches current date and if they haven't placed an order yet today
+- **Implementation**: The system checks if customer's birthdate matches current date and if they haven't placed an order yet today. The price of their cheapest pizza and cheapest drink gets deducted form the total, so you only get a free drink if you have a drink in you order items.
 
 #### 2. Loyalty Discount (10-Pizza Rule)
 - **Eligibility**: Automatically applied based on total pizzas ordered
@@ -154,12 +155,14 @@ This seed data can be find in at the bottom of the file [models.py](models.py)
   - Total becomes 23 pizzas
   - Customer receives 1 free pizza (and the counting towards the next 10 starts again at pizza 21)
   - The cheapest pizza in the current order is discounted
+  -if the customer orders 20 pizza's, they get 2 free pizza's.
+  - it can be combined bith the birthday discount, so if it is the customers birthday and their 10th pizza, they get 2 free pizza's, if they have at least 2 pizza's in their order items
 
 #### 3. Discount Codes
 - **Types**: Percentage-based discounts (e.g., WELCOME10, STUDENT15, VIP20)
 - **Limitation**: One-time use per customer per code
-- **Validation**: System checks if customer has already used the specific code
-- **Application**: Applied to the subtotal after free pizza/drink discounts
+- **Validation**: System checks if customer has already placed an order with the specific code
+- **Application**: Applied to the subtotal after free pizza/drink discounts are deducted.
 
 ### Order Constraints
 
