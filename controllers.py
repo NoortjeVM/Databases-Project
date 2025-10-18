@@ -5,6 +5,7 @@ from models import db, Customer, MenuItem, Order, OrderItem, Ingredient, Pizza, 
 from datetime import date, datetime, timezone
 from zoneinfo import ZoneInfo
 
+home_bp = Blueprint("home", __name__)
 customers_bp = Blueprint("customers", __name__)
 menu_items_bp = Blueprint("menu_items", __name__, url_prefix="/menu-items")
 orders_bp = Blueprint("orders", __name__)
@@ -12,6 +13,10 @@ ingredients_bp = Blueprint("ingredients", __name__)
 create_order_bp = Blueprint("create_order", __name__)
 staff_reports_bp = Blueprint("staff_reports", __name__)
 
+#home
+@home_bp.route("/")
+def index():
+    return render_template("index.html", title="Home")
 
 #customers
 @customers_bp.route("/customers")

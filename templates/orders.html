@@ -1,12 +1,13 @@
 {% extends "layout.html" %}
 {% block content %}
   {% if orders%}
+  <div class="table-wrapper">
   <table>
     <thead>
       <tr>
         <th>Order ID</th>
         <th>Customer</th>
-        <th>Items</th>
+        <th class="items-column">Items</th>
         <th>Total</th>
         <th>Delivery Person</th>
         <th>Delivery Address</th>
@@ -21,11 +22,11 @@
       <tr>
         <td>{{ order.order_id }}</td>
         <td>{{ order.customer.full_name }}</td>
-        <td>
+        <td class="items-column">
           {% if order.order_items %}
             <ul style="margin: 0; padding-left: 1rem;">
               {% for item in order.order_items %}
-                <li>{{ item.amount }} × {{ item.menu_item.item_name }}</li>
+                <li>{{ item.amount }} × {{ item.menu_item.name }}</li>
               {% endfor %}
             </ul>
           {% else %}—{% endif %}
@@ -49,6 +50,7 @@
       {% endfor %}
     </tbody>
   </table>
+  </div>
   {% else %}
     <p>No orders yet.</p>
   {% endif %}
