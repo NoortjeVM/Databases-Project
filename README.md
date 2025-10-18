@@ -137,7 +137,7 @@ This seed data can be found in at the bottom of the file [models.py](models.py)
 - Drinks and desserts have fixed prices set in the system
 
 ### Discount Rules
-implementation of the discount logic can be found in the methods calculate_discounts(), valid_discount_code() and valid_birthday_discount in [controllers.py] (controllers.py)
+implementation of the discount logic can be found in the methods calculate_discounts(), valid_discount_code() and valid_birthday_discount() in [controllers.py](controllers.py)
 
 #### 1. Birthday Discount
 - **Eligibility**: Automatically applied on customer's birthday
