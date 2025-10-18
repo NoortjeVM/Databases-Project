@@ -208,8 +208,7 @@ class Order(db.Model):
     order_time = db.Column(db.DateTime, default=lambda: datetime.now(ZoneInfo("Europe/Amsterdam")), nullable=False)
     delivery_address = db.Column(db.String(255), nullable=False)
     postal_code = db.Column(db.String(6), nullable=False)
-    pickup_time = db.Column(db.DateTime, nullable=False)
-    expected_delivery_time = db.Column(db.DateTime, nullable=False)
+    pickup_time = db.Column(db.DateTime, nullable=False) 
     total_price = db.Column(db.Numeric(8,2), nullable=False)
     
     # Relationships
@@ -217,6 +216,10 @@ class Order(db.Model):
     discount_code = db.relationship("DiscountCode", back_populates="orders")
     delivery_person = db.relationship("DeliveryPerson", back_populates="orders")
     order_items = db.relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
+
+    @property
+    def expected_delivery_time(self):
+        return self.pickup_time + timedelta(minutes=30)
     
     @property
     def item_count(self):
@@ -241,7 +244,7 @@ class Order(db.Model):
         now = datetime.now(ZoneInfo("Europe/Amsterdam"))
         
         # Make datetime values timezone-aware if they aren't already
-        expected_delivery = self.expected_delivery_time
+        expected_delivery = self.pickup_time + timedelta(minutes=30)
         if expected_delivery.tzinfo is None:
             expected_delivery = expected_delivery.replace(tzinfo=ZoneInfo("Europe/Amsterdam"))
         
@@ -285,7 +288,8 @@ class OrderItem(db.Model):
 
 
 def seed_data():
-    
+    db.drop_all()
+    db.create_all()
     fake = Faker("nl_NL")
 
     # --- Customers ---
@@ -304,17 +308,16 @@ def seed_data():
 
     # --- Delivery Persons ---
     if DeliveryPerson.query.count() == 0:
-        for _ in range(3):
+        postal_codes = ['6221AX', '6211RZ', '6215PD']
+        for i in range(3):
             d = DeliveryPerson(
                 delivery_person_first_name=fake.first_name(),
                 delivery_person_last_name=fake.last_name(),
-                postal_code=fake.postcode().replace(" ", "")[:6],
+                postal_code=postal_codes[i],
                 next_available_time=datetime.now(ZoneInfo("Europe/Amsterdam"))
             )
             db.session.add(d)
         db.session.flush()
-
-    
 
     # Ingredients
     if Ingredient.query.count() == 0:
@@ -423,15 +426,12 @@ def seed_data():
             #let the generated orders be in placed in the past month
             order_time = base_date - timedelta(days=random.randint(0, 30), hours=random.randint(0, 10), minutes=random.randint(0, 59))
             pickup_time = order_time + timedelta(minutes=random.randint(0, 60))
-            delivery_time = pickup_time + timedelta(minutes=30)
-
 
             order = Order(
                 customer_id=customer.customer_id,
                 delivery_person_id=delivery_person.delivery_person_id,
                 order_time=order_time,
                 pickup_time=pickup_time,
-                expected_delivery_time=delivery_time,
                 delivery_address=fake.street_address(),
                 postal_code=fake.postcode().replace(" ", "")[:6], #since in the database we fixed the length to 6 characters
                 total_price=0,

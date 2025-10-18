@@ -210,7 +210,8 @@ def create_order():
     
         # Check if a delivery person is found
         if delivery_person_id is None:
-            flash("No delivery person available for your postal code.", "error")
+            postcodes = [dp.postal_code for dp in DeliveryPerson.query.all()]
+            flash(f"No delivery person available for your postal code. Try one of these: {', '.join(postcodes)}", "error")
             return redirect(url_for("create_order.create_order"))
         
         price_list = list_prices_by_type(order_items)
@@ -246,7 +247,6 @@ def create_order():
                 delivery_address=delivery_address,
                 postal_code=postal_code,
                 pickup_time=pickup_time,  # Use the unpacked variable
-                expected_delivery_time=expected_delivery_time,  # Use the unpacked variable
                 total_price = discounts["total"]
                 )
                 db.session.add(order)
