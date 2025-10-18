@@ -7,7 +7,7 @@
         {% for customer in customers %}
           <option value="{{ customer.customer_id }}"
             {% if request.form.get('customer_id') == customer.customer_id|string %}selected{% endif %}>
-            {{ customer.full_name }} ({{ customer.phone_number }})
+            {{ customer.full_name }}
           </option>
         {% endfor %}
       </select>

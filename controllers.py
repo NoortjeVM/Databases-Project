@@ -161,7 +161,7 @@ def create_ingredient():
 # Orders
 @orders_bp.route("/list_orders")
 def list_orders():
-    orders = Order.query.all()
+    orders = Order.query.order_by(Order.order_time.desc()).all()
     print(f"amount of orders: {len(orders)}")
     return render_template("orders.html", orders=orders)
 
