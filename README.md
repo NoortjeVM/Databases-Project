@@ -256,6 +256,7 @@ pizza-ordering-system/
 - **Templating**: Jinja2 (Flask default)
 - **CSS**: Custom inline styles
 - **Timezone**: zoneinfo (Europe/Amsterdam)
+- **Generating seed data** Fake and ChatGPT
 
 ---
 
