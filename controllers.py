@@ -166,7 +166,7 @@ def create_ingredient():
 # Orders
 @orders_bp.route("/list_orders")
 def list_orders():
-    orders = Order.query.all()
+    orders = Order.query.order_by(Order.order_time.desc()).all()
     print(f"amount of orders: {len(orders)}")
     return render_template("orders.html", orders=orders)
 
@@ -188,12 +188,16 @@ def create_order():
         delivery_address = request.form.get("delivery_address", "").strip()
         postal_code = request.form.get("postal_code", "").strip()
         action = request.form.get("action")  # "preview" or "create"
+        request.form.get("use_customer_address")
 
         customer = Customer.query.get(customer_id)
         discount = DiscountCode.query.filter_by(discount_code=discount_code).first() if discount_code else None
 
-        # Normalize postal code
-        postal_code = postal_code.replace(" ", "").upper()
+        if request.form.get("use_customer_address"):
+            postal_code = customer.postal_code
+        else:
+            # Normalize postal code from input
+            postal_code = postal_code.replace(" ", "").upper()
 
         #collect selected order items
         order_items = []
@@ -215,7 +219,8 @@ def create_order():
     
         # Check if a delivery person is found
         if delivery_person_id is None:
-            flash("No delivery person available for your postal code.", "error")
+            postcodes = [dp.postal_code for dp in DeliveryPerson.query.all()]
+            flash(f"No delivery person available for your postal code. Try one of these: {', '.join(postcodes)}", "error")
             return redirect(url_for("create_order.create_order"))
         
         price_list = list_prices_by_type(order_items)
@@ -251,7 +256,6 @@ def create_order():
                 delivery_address=delivery_address,
                 postal_code=postal_code,
                 pickup_time=pickup_time,  # Use the unpacked variable
-                expected_delivery_time=expected_delivery_time,  # Use the unpacked variable
                 total_price = discounts["total"]
                 )
                 db.session.add(order)

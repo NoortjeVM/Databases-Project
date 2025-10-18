@@ -1,16 +1,17 @@
 from datetime import datetime
-import math
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import Numeric
-from datetime import date, timezone
+from datetime import date, timedelta
 from zoneinfo import ZoneInfo
+from faker import Faker
+import random
 
 db = SQLAlchemy()
 
 class MenuItem(db.Model):
     __tablename__ = "menu_item"
     item_id = db.Column(db.Integer, primary_key=True)
-    item_type = db.Column(db.String(20), nullable=False)  # "pizza", "drink", "dessert"
+    item_type = db.Column(db.String(20), nullable=False)  # "pizza", "drink" of "dessert"
     item_ref_id = db.Column(db.Integer, nullable=False)   # points to pizza_id / drink_id / dessert_id
 
     order_items = db.relationship("OrderItem", back_populates="menu_item")
@@ -109,6 +110,7 @@ class Customer(db.Model):
     last_name = db.Column(db.String(32), nullable=False)
     birthdate = db.Column(db.Date, nullable=False)
     address = db.Column(db.String(255))
+    postal_code = db.Column(db.String(6), nullable=False) 
     phone_number = db.Column(db.String(32), nullable=False, unique=True)
     gender = db.Column(db.Integer)  # 0, 1, 2 for different gender options
     
@@ -207,8 +209,7 @@ class Order(db.Model):
     order_time = db.Column(db.DateTime, default=lambda: datetime.now(ZoneInfo("Europe/Amsterdam")), nullable=False)
     delivery_address = db.Column(db.String(255), nullable=False)
     postal_code = db.Column(db.String(6), nullable=False)
-    pickup_time = db.Column(db.DateTime, nullable=False)
-    expected_delivery_time = db.Column(db.DateTime, nullable=False)
+    pickup_time = db.Column(db.DateTime, nullable=False) 
     total_price = db.Column(db.Numeric(8,2), nullable=False)
     
     # Relationships
@@ -216,6 +217,10 @@ class Order(db.Model):
     discount_code = db.relationship("DiscountCode", back_populates="orders")
     delivery_person = db.relationship("DeliveryPerson", back_populates="orders")
     order_items = db.relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
+
+    @property
+    def expected_delivery_time(self):
+        return self.pickup_time + timedelta(minutes=30)
     
     @property
     def item_count(self):
@@ -240,7 +245,7 @@ class Order(db.Model):
         now = datetime.now(ZoneInfo("Europe/Amsterdam"))
         
         # Make datetime values timezone-aware if they aren't already
-        expected_delivery = self.expected_delivery_time
+        expected_delivery = self.pickup_time + timedelta(minutes=30)
         if expected_delivery.tzinfo is None:
             expected_delivery = expected_delivery.replace(tzinfo=ZoneInfo("Europe/Amsterdam"))
         
@@ -282,41 +287,39 @@ class OrderItem(db.Model):
     def __repr__(self):
         return f"<OrderItem order={self.order_id} item={self.item_id} amount={self.amount}>"
 
-def seed_data():
-    # Customers
-    if Customer.query.count() == 0:
-        db.session.add_all([
-            Customer(first_name="Mario", last_name="Rossi", birthdate=datetime(1985, 5, 15).date(),
-                    address="Via Roma 123", phone_number="+1234567890", gender=1),
-            Customer(first_name="Luigi", last_name="Bianchi", birthdate=datetime(1990, 8, 22).date(),
-                    address="Via Milano 456", phone_number="+1234567891", gender=1),
-            Customer(first_name="Maria", last_name="Verdi", birthdate=datetime(1988, 3, 10).date(),
-                    address="Via Napoli 789", phone_number="+1234567892", gender=0),
-            Customer(first_name="Giulia", last_name="Conti", birthdate=datetime(1995, 11, 2).date(),
-                    address="Via Firenze 12", phone_number="+1234567893", gender=0),
-            Customer(first_name="Francesco", last_name="Moretti", birthdate=datetime(1982, 1, 28).date(),
-                    address="Via Torino 45", phone_number="+1234567894", gender=1),
-            Customer(first_name="Chiara", last_name="Gallo", birthdate=datetime(1999, 7, 16).date(),
-                    address="Corso Venezia 77", phone_number="+1234567895", gender=0),
-            Customer(first_name="Lorenzo", last_name="Ricci", birthdate=datetime(1978, 9, 9).date(),
-                    address="Piazza Duomo 3", phone_number="+1234567896", gender=1),
-            Customer(first_name="Sara", last_name="Marini", birthdate=datetime(1993, 4, 4).date(),
-                    address="Via Trieste 21", phone_number="+1234567897", gender=0),
-            Customer(first_name="Elena", last_name="Romano", birthdate=datetime(2001, 6, 30).date(),
-                    address="Via Genova 88", phone_number="+1234567898", gender=0),
-            Customer(first_name="Davide", last_name="Giordano", birthdate=datetime(1987, 12, 19).date(),
-                    address="Viale Garibaldi 9", phone_number="+1234567899", gender=1),
-            Customer(first_name="Alessia", last_name="Barbieri", birthdate=datetime(1996, 2, 14).date(),
-                    address="Via Bologna 56", phone_number="+1234567800", gender=0),
-        ])
 
-    # Delivery people
+def seed_data():
+    db.drop_all()
+    db.create_all()
+    fake = Faker("nl_NL")
+    postal_codes = ['6221AX', '6211RZ', '6215PD']
+
+    # --- Customers ---
+    if Customer.query.count() == 0:
+        for _ in range(10):
+            c = Customer(
+                first_name=fake.first_name(),
+                last_name=fake.last_name(),
+                birthdate=fake.date_of_birth(minimum_age=18, maximum_age=60),
+                address=fake.address(),
+                postal_code = random.choice(postal_codes),
+                phone_number=fake.unique.phone_number(),
+                gender=random.choice([0, 1, 2])
+            )
+            db.session.add(c)
+        db.session.flush()
+
+    # --- Delivery Persons ---
     if DeliveryPerson.query.count() == 0:
-        db.session.add_all([
-            DeliveryPerson(delivery_person_first_name="Giovanni", delivery_person_last_name="Delivery", postal_code="1234AB"),
-            DeliveryPerson(delivery_person_first_name="Francesco", delivery_person_last_name="Speed", postal_code="5678CD"),
-            DeliveryPerson(delivery_person_first_name="Luca", delivery_person_last_name="Fast", postal_code="9012EF"),
-        ])
+        for i in range(3):
+            d = DeliveryPerson(
+                delivery_person_first_name=fake.first_name(),
+                delivery_person_last_name=fake.last_name(),
+                postal_code=postal_codes[i],
+                next_available_time=datetime.now(ZoneInfo("Europe/Amsterdam"))
+            )
+            db.session.add(d)
+        db.session.flush()
 
     # Ingredients
     if Ingredient.query.count() == 0:
@@ -333,7 +336,6 @@ def seed_data():
             Ingredient(ingredient_name="Basil", price=0.75, vegetarian=True, vegan=True),
             Ingredient(ingredient_name="Parmesan", price=2.20, vegetarian=True, vegan=False),
             Ingredient(ingredient_name="Gorgonzola", price=2.30, vegetarian=True, vegan=False),
-            Ingredient(ingredient_name="Vegan Mozzarella", price=2.00, vegetarian=True, vegan=True),
         ])
     db.session.flush()  # so ingredient IDs exist
 
@@ -351,7 +353,6 @@ def seed_data():
         basil = Ingredient.query.filter_by(ingredient_name="Basil").first()
         parmesan = Ingredient.query.filter_by(ingredient_name="Parmesan").first()
         gorgonzola = Ingredient.query.filter_by(ingredient_name="Gorgonzola").first()
-        vegan_mozzarella = Ingredient.query.filter_by(ingredient_name="Vegan Mozzarella").first()
 
         pizzas = [
             Pizza(name="Margherita", ingredients=[tomato, mozzarella, basil]),
@@ -362,26 +363,17 @@ def seed_data():
             Pizza(name="Meat Feast", ingredients=[tomato, mozzarella, ham, pepperoni]),
             Pizza(name="Capricciosa", ingredients=[tomato, mozzarella, ham, mushrooms, olives]),
             Pizza(name="Funghi", ingredients=[tomato, mozzarella, mushrooms]),
-            Pizza(name="Vegan Garden", ingredients=[tomato, vegan_mozzarella, peppers, onions, mushrooms, olives]),
-            Pizza(name="Vegan Tropical", ingredients=[tomato, vegan_mozzarella, pineapple, peppers, onions]),
-            Pizza(name="Vegan Classic", ingredients=[tomato, vegan_mozzarella, basil, mushrooms, olives]),
         ]
         db.session.add_all(pizzas)
         db.session.flush()
 
-    # Drinks
+    # --- Drinks ---
     if Drink.query.count() == 0:
         drinks = [
-            Drink(name="Coca Cola", price=2.50),
-            Drink(name="Water", price=1.00),
-            Drink(name="Fanta", price=2.20),
-            Drink(name="Sprite", price=2.20),
-            Drink(name="Coca Cola Zero", price=2.50),
-            Drink(name="Iced Tea", price=2.30),
-            Drink(name="Sparkling Water", price=1.50),
-            Drink(name="Lemonade", price=2.00),
-            Drink(name="Apple Juice", price=2.40),
-            Drink(name="Beer", price=3.00),
+            Drink(name="Coca Cola", price=2.00),
+            Drink(name="Sprite", price=2.00),
+            Drink(name="Ice Tea", price=2.50),
+            Drink(name="Beer", price=3.50),
         ]
         db.session.add_all(drinks)
         db.session.flush()
@@ -391,34 +383,94 @@ def seed_data():
         desserts = [
             Dessert(name="Tiramisu", price=4.00),
             Dessert(name="Panna Cotta", price=3.50),
-            Dessert(name="Tiramisu", price=4.00),
-            Dessert(name="Panna Cotta", price=3.50),
-            Dessert(name="Gelato", price=3.00),
-            Dessert(name="Chocolate Lava Cake", price=4.50),
-            Dessert(name="Fruity Sorbet", price=3.80),
-            Dessert(name="Affogato", price=3.50),
-            Dessert(name="Cheesecake", price=4.20),
         ]
         db.session.add_all(desserts)
         db.session.flush()
 
-    # MenuItems wrapper
-    if MenuItem.query.count() == 0:
-        menu_items = []
-        for pizza in Pizza.query.all():
-            menu_items.append(MenuItem(item_type="pizza", item_ref_id=pizza.pizza_id))
-        for drink in Drink.query.all():
-            menu_items.append(MenuItem(item_type="drink", item_ref_id=drink.drink_id))
-        for dessert in Dessert.query.all():
-            menu_items.append(MenuItem(item_type="dessert", item_ref_id=dessert.dessert_id))
-        db.session.add_all(menu_items)
+    # Voeg alleen menu items toe als ze nog niet bestaan
+    for p in Pizza.query.all():
+        if not MenuItem.query.filter_by(item_type="pizza", item_ref_id=p.pizza_id).first():
+            db.session.add(MenuItem(item_type="pizza", item_ref_id=p.pizza_id))
 
-    # Discount codes
+    for d in Drink.query.all():
+        if not MenuItem.query.filter_by(item_type="drink", item_ref_id=d.drink_id).first():
+            db.session.add(MenuItem(item_type="drink", item_ref_id=d.drink_id))
+
+    for ds in Dessert.query.all():
+        if not MenuItem.query.filter_by(item_type="dessert", item_ref_id=ds.dessert_id).first():
+            db.session.add(MenuItem(item_type="dessert", item_ref_id=ds.dessert_id))
+
+
+    # --- Discount Codes ---
     if DiscountCode.query.count() == 0:
         db.session.add_all([
             DiscountCode(percentage=10, discount_code="WELCOME10"),
             DiscountCode(percentage=15, discount_code="STUDENT15"),
             DiscountCode(percentage=20, discount_code="VIP20"),
         ])
+        db.session.flush()
 
-    db.session.commit()
+
+    # Orders
+    if Order.query.count() == 0:
+        customers = Customer.query.all()
+        delivery_people = DeliveryPerson.query.all()
+        menu_pizzas = MenuItem.query.filter_by(item_type="pizza").all()
+        menu_drinks = MenuItem.query.filter_by(item_type="drink").all()
+        menu_desserts = MenuItem.query.filter_by(item_type="dessert").all()
+
+        base_date = datetime.now(ZoneInfo("Europe/Amsterdam"))
+
+        for _ in range(20):
+            customer = random.choice(customers)
+            delivery_person = random.choice(delivery_people)
+
+            #let the generated orders be in placed in the past month
+            order_time = base_date - timedelta(days=random.randint(0, 30), hours=random.randint(0, 10), minutes=random.randint(0, 59))
+            pickup_time = order_time + timedelta(minutes=random.randint(0, 60))
+
+            order = Order(
+                customer_id=customer.customer_id,
+                delivery_person_id=delivery_person.delivery_person_id,
+                order_time=order_time,
+                pickup_time=pickup_time,
+                delivery_address=fake.street_address(),
+                postal_code=customer.postal_code,
+                total_price=0,
+            )
+            db.session.add(order)
+            db.session.flush()
+
+            subtotal = 0
+            added_item_ids = set()
+
+            for _ in range(random.randint(1, 4)):
+                pizza_item = random.choice(menu_pizzas)
+                if pizza_item.item_id in added_item_ids:
+                    continue  # skip if we already have this pizza in the orderitems
+                qty = random.randint(1, 3)
+                db.session.add(OrderItem(order_id=order.order_id, item_id=pizza_item.item_id, amount=qty))
+                subtotal += pizza_item.price * qty
+                added_item_ids.add(pizza_item.item_id)
+
+            if random.random() < 0.6:
+                drink_item = random.choice(menu_drinks)
+                if drink_item.item_id in added_item_ids:
+                    continue  # skip if its already added
+                qty = random.randint(1, 2)
+                db.session.add(OrderItem(order_id=order.order_id, item_id=drink_item.item_id, amount=qty))
+                subtotal += drink_item.price * qty
+                added_item_ids.add(drink_item.item_id)
+
+            if random.random() < 0.3:
+                dessert_item = random.choice(menu_desserts)
+                if dessert_item.item_id in added_item_ids:
+                    continue
+                qty = 1
+                db.session.add(OrderItem(order_id=order.order_id, item_id=dessert_item.item_id, amount=qty))
+                subtotal += dessert_item.price * qty
+                added_item_ids.add(dessert_item.item_id)
+
+            order.total_price = round(subtotal, 2)
+
+        db.session.commit()
