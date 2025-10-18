@@ -183,12 +183,16 @@ def create_order():
         delivery_address = request.form.get("delivery_address", "").strip()
         postal_code = request.form.get("postal_code", "").strip()
         action = request.form.get("action")  # "preview" or "create"
+        request.form.get("use_customer_address")
 
         customer = Customer.query.get(customer_id)
         discount = DiscountCode.query.filter_by(discount_code=discount_code).first() if discount_code else None
 
-        # Normalize postal code
-        postal_code = postal_code.replace(" ", "").upper()
+        if request.form.get("use_customer_address"):
+            postal_code = customer.postal_code
+        else:
+            # Normalize postal code from input
+            postal_code = postal_code.replace(" ", "").upper()
 
         #collect selected order items
         order_items = []

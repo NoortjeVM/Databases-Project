@@ -110,6 +110,7 @@ class Customer(db.Model):
     last_name = db.Column(db.String(32), nullable=False)
     birthdate = db.Column(db.Date, nullable=False)
     address = db.Column(db.String(255))
+    postal_code = db.Column(db.String(6), nullable=False) 
     phone_number = db.Column(db.String(32), nullable=False, unique=True)
     gender = db.Column(db.Integer)  # 0, 1, 2 for different gender options
     
@@ -291,6 +292,7 @@ def seed_data():
     db.drop_all()
     db.create_all()
     fake = Faker("nl_NL")
+    postal_codes = ['6221AX', '6211RZ', '6215PD']
 
     # --- Customers ---
     if Customer.query.count() == 0:
@@ -300,6 +302,7 @@ def seed_data():
                 last_name=fake.last_name(),
                 birthdate=fake.date_of_birth(minimum_age=18, maximum_age=60),
                 address=fake.address(),
+                postal_code = random.choice(postal_codes),
                 phone_number=fake.unique.phone_number(),
                 gender=random.choice([0, 1, 2])
             )
@@ -308,7 +311,6 @@ def seed_data():
 
     # --- Delivery Persons ---
     if DeliveryPerson.query.count() == 0:
-        postal_codes = ['6221AX', '6211RZ', '6215PD']
         for i in range(3):
             d = DeliveryPerson(
                 delivery_person_first_name=fake.first_name(),
@@ -433,7 +435,7 @@ def seed_data():
                 order_time=order_time,
                 pickup_time=pickup_time,
                 delivery_address=fake.street_address(),
-                postal_code=fake.postcode().replace(" ", "")[:6], #since in the database we fixed the length to 6 characters
+                postal_code=customer.postal_code,
                 total_price=0,
             )
             db.session.add(order)

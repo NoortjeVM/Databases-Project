@@ -13,12 +13,17 @@
       </select>
     </label>
     
+    <label>Use address and postal code from selected customer
+      <input type="checkbox" name="use_customer_address" id="use_customer_address"
+             {% if request.form.get("use_customer_address") %} checked{% endif %}>
+    </label>
+    
     <label>Postal Code *
-      <input type="text" name="postal_code" value="{{ request.form.postal_code or '' }}" required>
+      <input type="text" name="postal_code" value="{{ request.form.postal_code or '' }}">
     </label>
 
     <label>Delivery Address *
-      <textarea name="delivery_address" rows="2" required>{{ request.form.delivery_address or '' }}</textarea>
+      <textarea name="delivery_address" rows="2" >{{ request.form.delivery_address or '' }}</textarea>
     </label>
     
     <label>Discount Code (Optional)
