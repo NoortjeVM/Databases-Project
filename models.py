@@ -305,19 +305,19 @@ class OrderItem(db.Model):
 
 
 def seed_data():
-    #db.drop_all()
-    #db.create_all()
+    db.drop_all()
+    db.create_all()
     fake = Faker("nl_NL")
     postal_codes = ['6221AX', '6211RZ', '6215PD']
 
-    # --- Customers ---
+    # customers
     if Customer.query.count() == 0:
         for _ in range(10):
             c = Customer(
                 first_name=fake.first_name(),
                 last_name=fake.last_name(),
                 birthdate=fake.date_of_birth(minimum_age=18, maximum_age=60),
-                address=fake.address(),
+                address=f'{fake.street_name()} {random.randint(1,200)}',
                 postal_code = random.choice(postal_codes),
                 phone_number=fake.unique.phone_number(),
                 gender=random.choice([0, 1, 2])
@@ -325,7 +325,7 @@ def seed_data():
             db.session.add(c)
         db.session.flush()
 
-    # --- Delivery Persons ---
+    # Delivery Persons
     if DeliveryPerson.query.count() == 0:
         for i in range(3):
             d = DeliveryPerson(
@@ -356,7 +356,7 @@ def seed_data():
         ])
     db.session.flush()  # so ingredient IDs exist
 
-    # Pizzas with ingredients
+    # pizzas with ingredients
     if Pizza.query.count() == 0:
         tomato = Ingredient.query.filter_by(ingredient_name="Tomato Sauce").first()
         mozzarella = Ingredient.query.filter_by(ingredient_name="Mozzarella").first()
@@ -387,7 +387,7 @@ def seed_data():
         db.session.add_all(pizzas)
         db.session.flush()
 
-    # --- Drinks ---
+    # Drinks
     if Drink.query.count() == 0:
         drinks = [
             Drink(name="Coca Cola", price=2.00),
@@ -408,7 +408,7 @@ def seed_data():
         db.session.add_all(desserts)
         db.session.flush()
 
-    # Voeg alleen menu items toe als ze nog niet bestaan
+    # add menu items for pizza's,drinks etc if they dont exist yet
     for p in Pizza.query.all():
         if not MenuItem.query.filter_by(item_type="pizza", item_ref_id=p.pizza_id).first():
             db.session.add(MenuItem(item_type="pizza", item_ref_id=p.pizza_id))
