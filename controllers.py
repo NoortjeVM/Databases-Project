@@ -34,11 +34,16 @@ def create_customer():
     last_name = request.form.get("last_name", "").strip()
     phone_number = request.form.get("phone_number", "").strip()
     address = request.form.get("address", "").strip()
+    postal_code = request.form.get("postal_code", "").strip().replace(" ", "").upper()
     birthdate_str = request.form.get("birthdate", "").strip()
     gender = request.form.get("gender", "").strip()
     
     if not all([first_name, last_name, phone_number, birthdate_str]):
         flash("First name, last name, phone number, and birthdate are required.", "error")
+        return redirect(url_for("customers.new_customer"))
+    
+    if len(postal_code) != 6:
+        flash("Postal code must be exactly 6 characters (e.g. 6222RT).")
         return redirect(url_for("customers.new_customer"))
     
     try:
@@ -58,6 +63,7 @@ def create_customer():
             last_name=last_name,
             phone_number=phone_number,
             address=address,
+            postal_code=postal_code,
             birthdate=birthdate,
             gender=gender_val
         )

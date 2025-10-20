@@ -1,8 +1,9 @@
-#!/Users/lisa/Documents/DSAI_year2/databases-project/venv/bin/python3
-# -*- coding: utf-8 -*-
-import re
+#!/bin/sh
+'''exec' "/Users/noortjevanmaldegem/Documents/Universiteit/Jaar 2/Periode 1/Databases/databases-project/venv/bin/python3.13" "$0" "$@"
+' '''
 import sys
 from faker.cli import execute_from_command_line
 if __name__ == '__main__':
-    sys.argv[0] = re.sub(r'(-script\.pyw|\.exe)?$', '', sys.argv[0])
+    if sys.argv[0].endswith('.exe'):
+        sys.argv[0] = sys.argv[0][:-4]
     sys.exit(execute_from_command_line())
