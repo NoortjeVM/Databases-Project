@@ -42,7 +42,7 @@ CREATE TABLE `customer` (
 
 LOCK TABLES `customer` WRITE;
 /*!40000 ALTER TABLE `customer` DISABLE KEYS */;
-INSERT INTO `customer` VALUES (1,'Inaya','Volcke','1982-07-29','Esméeboulevard 89\n7872 AJ\nKollumerpomp','6211RZ','+31281 930252',0),(2,'Aaliyah','Remmers','1987-07-24','Timodreef 4\n3495 QU\nKoudekerke','6215PD','+31(0)40 2118023',2),(3,'Kyano','Lips','1974-12-28','Jorndreef 887\n5497UH\nAlphen aan den Rijn','6215PD','(044) 6550461',1),(4,'Sylvie','van \'t Wel','1983-05-10','Casring 415\n9098BY\nReutum','6221AX','+31995-346164',1),(5,'Jet','VI','1967-09-06','Isedreef 10\n6209JC\nUden','6221AX','+31(0)97-5183843',0),(6,'Kyan','van Laarhoven','1997-07-13','Sarahring 230\n4680 SI\nGoënga','6215PD','(0344) 394096',1),(7,'Jim','van Baalen','1967-01-26','Benjaminbaan 0\n7463 DI\nSlappeterp','6211RZ','+31(0)24 1397270',1),(8,'Mare','Verhoeven','1986-06-07','Thijnboulevard 80\n5570PC\nOud Annerveen','6211RZ','(039) 5058246',0),(9,'Isabel','Lelijveld','1976-05-01','Corneliaring 51\n7546AF\nDe Kiel','6215PD','063-9537684',1),(10,'Zoë','van den Wittenboer','1987-06-24','Selinalaan 566\n7119 LA\nYerseke','6211RZ','(0728) 184730',2);
+INSERT INTO `customer` VALUES (1,'Wessel','Heerschop','1990-09-12','Nadinering 154','6215PD','+31962 895422',2),(2,'Elise','Bouwhuisen','1965-01-19','Milansingel 200','6221AX','(086)-9819895',0),(3,'Janne','Veltman','1990-09-22','Brittring 27','6215PD','+31(0)92-5378664',0),(4,'Yasmin','van Poppel','1965-11-12','Tristanlaan 121','6221AX','0425 084721',1),(5,'Dylano','Zuijdveld','2001-03-26','Jennifersingel 116','6215PD','073-1721189',2),(6,'Zakaria','Perrono','2004-10-01','Joeylaan 21','6221AX','+31948 413649',1),(7,'Juliette','Scheer','2007-10-17','Saraweg 90','6211RZ','+31(0)043 054062',1),(8,'Wessel','Guit','1980-10-22','Ashleyring 63','6221AX','+31602-387825',2),(9,'Maud','Verschuere','1996-11-22','Annelaan 159','6211RZ','(0106)-816564',1),(10,'Lenn','Kuiper','1983-11-11','Tirzaring 3','6215PD','+31(0)235 423625',0);
 /*!40000 ALTER TABLE `customer` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -69,7 +69,7 @@ CREATE TABLE `delivery_person` (
 
 LOCK TABLES `delivery_person` WRITE;
 /*!40000 ALTER TABLE `delivery_person` DISABLE KEYS */;
-INSERT INTO `delivery_person` VALUES (1,'Mathijs','Gemen','6221AX','2025-10-18 20:57:01'),(2,'Hailey','van Munster','6211RZ','2025-10-18 20:57:01'),(3,'Yinthe','Melet','6215PD','2025-10-18 20:57:01');
+INSERT INTO `delivery_person` VALUES (1,'Amélie','van Rijnsbergen','6221AX','2025-10-20 17:24:40'),(2,'Lucas','Moensendijk','6211RZ','2025-10-20 17:24:40'),(3,'Rowan','Arens','6215PD','2025-10-20 17:24:40');
 /*!40000 ALTER TABLE `delivery_person` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -84,8 +84,9 @@ CREATE TABLE `dessert` (
   `dessert_id` int NOT NULL AUTO_INCREMENT,
   `name` varchar(50) NOT NULL,
   `price` decimal(8,2) NOT NULL,
-  PRIMARY KEY (`dessert_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+  PRIMARY KEY (`dessert_id`),
+  CONSTRAINT `check_dessert_price_positive` CHECK ((`price` > 0))
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -94,7 +95,7 @@ CREATE TABLE `dessert` (
 
 LOCK TABLES `dessert` WRITE;
 /*!40000 ALTER TABLE `dessert` DISABLE KEYS */;
-INSERT INTO `dessert` VALUES (1,'Tiramisu',4.00),(2,'Panna Cotta',3.50);
+INSERT INTO `dessert` VALUES (1,'Tiramisu',4.00),(2,'Panna Cotta',3.50),(3,'Brownie',2.50);
 /*!40000 ALTER TABLE `dessert` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -166,7 +167,7 @@ CREATE TABLE `ingredient` (
   PRIMARY KEY (`ingredient_id`),
   UNIQUE KEY `ingredient_name` (`ingredient_name`),
   CONSTRAINT `check_ingredient_price_positive` CHECK ((`price` > 0))
-) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -175,7 +176,7 @@ CREATE TABLE `ingredient` (
 
 LOCK TABLES `ingredient` WRITE;
 /*!40000 ALTER TABLE `ingredient` DISABLE KEYS */;
-INSERT INTO `ingredient` VALUES (1,'Tomato Sauce',1.50,1,1),(2,'Mozzarella',2.00,1,0),(3,'Pepperoni',2.50,0,0),(4,'Mushrooms',1.75,1,1),(5,'Bell Peppers',1.25,1,1),(6,'Onions',1.00,1,1),(7,'Olives',1.50,1,1),(8,'Ham',2.75,0,0),(9,'Pineapple',1.80,1,1),(10,'Basil',0.75,1,1),(11,'Parmesan',2.20,1,0),(12,'Gorgonzola',2.30,1,0);
+INSERT INTO `ingredient` VALUES (1,'Tomato Sauce',1.50,1,1),(2,'Mozzarella',2.00,1,0),(3,'Vegan Mozzarella',3.00,1,1),(4,'Pepperoni',2.50,0,0),(5,'Mushrooms',1.75,1,1),(6,'Bell Peppers',1.25,1,1),(7,'Onions',1.00,1,1),(8,'Olives',1.50,1,1),(9,'Ham',2.75,0,0),(10,'Pineapple',1.80,1,1),(11,'Basil',0.75,1,1),(12,'Parmesan',2.20,1,0),(13,'Gorgonzola',2.30,1,0);
 /*!40000 ALTER TABLE `ingredient` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -191,7 +192,7 @@ CREATE TABLE `menu_item` (
   `item_type` varchar(20) NOT NULL,
   `item_ref_id` int NOT NULL,
   PRIMARY KEY (`item_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -200,7 +201,7 @@ CREATE TABLE `menu_item` (
 
 LOCK TABLES `menu_item` WRITE;
 /*!40000 ALTER TABLE `menu_item` DISABLE KEYS */;
-INSERT INTO `menu_item` VALUES (1,'pizza',1),(2,'pizza',2),(3,'pizza',3),(4,'pizza',4),(5,'pizza',5),(6,'pizza',6),(7,'pizza',7),(8,'pizza',8),(9,'drink',1),(10,'drink',2),(11,'drink',3),(12,'drink',4),(13,'dessert',1),(14,'dessert',2);
+INSERT INTO `menu_item` VALUES (1,'pizza',1),(2,'pizza',2),(3,'pizza',3),(4,'pizza',4),(5,'pizza',5),(6,'pizza',6),(7,'pizza',7),(8,'pizza',8),(9,'pizza',9),(10,'pizza',10),(11,'drink',1),(12,'drink',2),(13,'drink',3),(14,'drink',4),(15,'dessert',1),(16,'dessert',2),(17,'dessert',3);
 /*!40000 ALTER TABLE `menu_item` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -238,7 +239,7 @@ CREATE TABLE `order` (
 
 LOCK TABLES `order` WRITE;
 /*!40000 ALTER TABLE `order` DISABLE KEYS */;
-INSERT INTO `order` VALUES (1,4,NULL,3,'2025-10-05 16:03:01','Jamiedreef 660','6221AX','2025-10-05 16:44:01',39.90),(2,3,NULL,1,'2025-10-14 12:52:01','Rafweg 59','6215PD','2025-10-14 13:30:01',11.55),(3,8,NULL,1,'2025-10-16 16:00:01','Lucdreef 501','6211RZ','2025-10-16 16:35:01',52.25),(4,1,NULL,3,'2025-10-08 17:59:01','Kayleeweg 456','6211RZ','2025-10-08 18:08:01',38.25),(5,5,NULL,2,'2025-10-06 13:43:01','Laurenpad 64','6221AX','2025-10-06 13:50:01',28.10),(6,7,NULL,3,'2025-10-07 11:17:01','Ayoubsteeg 03','6211RZ','2025-10-07 11:55:01',51.75),(7,9,NULL,3,'2025-09-23 12:28:01','Meikedreef 4','6215PD','2025-09-23 12:34:01',21.50),(8,9,NULL,1,'2025-09-24 15:44:01','Josephinehof 0','6215PD','2025-09-24 16:04:01',39.25),(9,6,NULL,2,'2025-09-22 20:28:01','Valeriesteeg 9','6215PD','2025-09-22 21:17:01',18.00),(10,3,NULL,3,'2025-10-13 16:21:01','Pimpad 084','6215PD','2025-10-13 16:45:01',18.00),(11,7,NULL,3,'2025-10-01 10:29:01','Bilalbaan 6','6211RZ','2025-10-01 11:20:01',71.75),(12,2,NULL,3,'2025-10-13 13:23:01','Eliassteeg 079','6215PD','2025-10-13 14:17:01',72.85),(13,10,NULL,1,'2025-10-07 15:44:01','Dinaweg 647','6211RZ','2025-10-07 16:07:01',44.25),(14,6,NULL,1,'2025-09-30 13:47:01','Tijmenpad 8','6215PD','2025-09-30 14:34:01',16.10),(15,3,NULL,3,'2025-10-01 15:27:01','Sethdreef 08','6215PD','2025-10-01 16:12:01',9.25),(16,2,NULL,1,'2025-09-29 15:05:01','Amelialaan 763','6215PD','2025-09-29 15:32:01',34.50),(17,6,NULL,2,'2025-09-27 11:51:01','Mayastraat 4','6215PD','2025-09-27 12:34:01',21.05),(18,10,NULL,1,'2025-10-14 18:25:01','Imkebaan 080','6211RZ','2025-10-14 19:04:01',28.75),(19,6,NULL,2,'2025-10-13 11:48:01','Riklaan 2','6215PD','2025-10-13 12:39:01',37.50),(20,6,NULL,3,'2025-10-10 17:20:01','Rowanpad 34','6215PD','2025-10-10 17:30:01',31.30);
+INSERT INTO `order` VALUES (1,4,NULL,1,'2025-10-13 07:37:41','Jentehof 43','6221AX','2025-10-13 08:06:41',19.52),(2,5,NULL,2,'2025-09-27 14:48:41','Pepijnboulevard 658','6215PD','2025-09-27 14:59:41',63.01),(3,8,NULL,3,'2025-10-04 16:34:41','Martstraat 2','6221AX','2025-10-04 17:00:41',95.78),(4,2,NULL,2,'2025-10-07 13:27:41','Brittsteeg 506','6221AX','2025-10-07 14:21:41',75.16),(5,5,NULL,2,'2025-10-16 08:02:41','Fatimalaan 59','6215PD','2025-10-16 08:59:41',70.00),(6,2,NULL,3,'2025-09-29 13:24:41','Isastraat 2','6221AX','2025-09-29 13:47:41',53.41),(7,4,NULL,3,'2025-09-29 11:46:41','Helenaring 1','6221AX','2025-09-29 12:16:41',42.77),(8,8,NULL,3,'2025-09-25 16:12:41','Elifbaan 3','6221AX','2025-09-25 16:13:41',57.79),(9,6,NULL,2,'2025-10-11 14:37:41','Annestraat 217','6221AX','2025-10-11 15:02:41',105.29),(10,10,NULL,3,'2025-10-13 14:32:41','Elifsingel 290','6215PD','2025-10-13 14:50:41',28.78),(11,9,NULL,1,'2025-10-11 12:54:41','Pienpad 116','6211RZ','2025-10-11 13:16:41',74.53),(12,3,NULL,3,'2025-10-08 14:46:41','Koensteeg 47','6215PD','2025-10-08 15:17:41',17.00),(13,7,NULL,1,'2025-09-24 07:23:41','Sebastiaanlaan 849','6211RZ','2025-09-24 07:47:41',78.48),(14,8,NULL,3,'2025-09-27 06:27:41','Jordyweg 0','6221AX','2025-09-27 07:03:41',16.02),(15,7,NULL,2,'2025-09-20 15:23:41','Yaralaan 69','6211RZ','2025-09-20 16:02:41',65.19),(16,10,NULL,3,'2025-09-20 07:36:41','Esmeestraat 954','6215PD','2025-09-20 07:53:41',103.95),(17,9,NULL,1,'2025-09-27 10:46:41','Wesselstraat 41','6211RZ','2025-09-27 11:09:41',51.19),(18,5,NULL,3,'2025-10-06 14:43:41','Tygobaan 85','6215PD','2025-10-06 15:09:41',28.03),(19,7,NULL,3,'2025-10-17 16:15:41','Sanderpad 710','6211RZ','2025-10-17 16:30:41',42.44),(20,3,NULL,1,'2025-09-26 09:28:41','Ceylinlaan 648','6215PD','2025-09-26 10:22:41',80.59);
 /*!40000 ALTER TABLE `order` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -266,7 +267,7 @@ CREATE TABLE `order_item` (
 
 LOCK TABLES `order_item` WRITE;
 /*!40000 ALTER TABLE `order_item` DISABLE KEYS */;
-INSERT INTO `order_item` VALUES (1,4,3),(1,8,3),(2,4,1),(2,12,1),(3,5,3),(3,7,2),(3,8,1),(3,13,1),(4,1,3),(4,5,2),(4,7,1),(5,2,2),(5,4,2),(6,1,1),(6,2,1),(6,3,3),(6,8,2),(6,10,2),(7,6,2),(7,10,2),(8,1,3),(8,3,1),(8,6,2),(9,2,3),(10,3,2),(11,2,3),(11,3,2),(11,6,3),(11,7,1),(12,3,3),(12,4,2),(12,6,3),(12,14,1),(13,3,2),(13,5,2),(13,8,1),(13,11,2),(14,4,2),(15,1,1),(15,11,2),(16,2,1),(16,3,2),(16,8,2),(17,4,1),(17,8,2),(17,11,1),(18,2,1),(18,6,2),(18,8,1),(19,6,2),(19,7,1),(19,8,2),(20,4,1),(20,6,1),(20,8,2),(20,9,2);
+INSERT INTO `order_item` VALUES (1,2,2),(1,16,1),(2,4,1),(2,5,3),(2,14,1),(3,2,1),(3,6,2),(3,7,1),(3,9,3),(3,13,2),(3,17,1),(4,1,3),(4,7,1),(4,9,3),(5,2,3),(5,3,3),(5,9,1),(5,15,1),(6,7,2),(6,9,2),(7,4,1),(7,10,3),(7,13,2),(8,4,1),(8,8,3),(8,12,2),(9,3,3),(9,4,1),(9,8,3),(9,10,3),(10,6,1),(10,9,1),(10,12,1),(11,2,2),(11,4,2),(11,10,3),(11,14,2),(12,9,1),(12,13,1),(13,5,3),(13,8,2),(13,14,1),(13,17,1),(14,2,2),(15,3,1),(15,4,2),(15,6,2),(15,11,2),(16,4,2),(16,5,3),(16,8,2),(16,12,2),(17,2,1),(17,4,2),(17,7,1),(17,14,1),(18,2,3),(18,12,2),(19,4,1),(19,8,2),(19,12,1),(20,2,3),(20,3,2),(20,7,1),(20,10,3),(20,12,1);
 /*!40000 ALTER TABLE `order_item` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -281,7 +282,7 @@ CREATE TABLE `pizza` (
   `pizza_id` int NOT NULL AUTO_INCREMENT,
   `name` varchar(50) NOT NULL,
   PRIMARY KEY (`pizza_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -290,7 +291,7 @@ CREATE TABLE `pizza` (
 
 LOCK TABLES `pizza` WRITE;
 /*!40000 ALTER TABLE `pizza` DISABLE KEYS */;
-INSERT INTO `pizza` VALUES (1,'Margherita'),(2,'Pepperoni'),(3,'Veggie Deluxe'),(4,'Hawaiian'),(5,'Four Cheese'),(6,'Meat Feast'),(7,'Capricciosa'),(8,'Funghi');
+INSERT INTO `pizza` VALUES (1,'Margherita'),(2,'Vegan Margherita'),(3,'Pepperoni'),(4,'Veggie Deluxe'),(5,'Vegan Deluxe'),(6,'Hawaiian'),(7,'Four Cheese'),(8,'Meat Feast'),(9,'Capricciosa'),(10,'Funghi');
 /*!40000 ALTER TABLE `pizza` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -317,7 +318,7 @@ CREATE TABLE `pizza_ingredient` (
 
 LOCK TABLES `pizza_ingredient` WRITE;
 /*!40000 ALTER TABLE `pizza_ingredient` DISABLE KEYS */;
-INSERT INTO `pizza_ingredient` VALUES (1,1),(2,1),(3,1),(4,1),(5,1),(6,1),(7,1),(8,1),(1,2),(2,2),(3,2),(4,2),(5,2),(6,2),(7,2),(8,2),(2,3),(6,3),(3,4),(7,4),(8,4),(3,5),(3,6),(3,7),(7,7),(4,8),(6,8),(7,8),(4,9),(1,10),(5,11),(5,12);
+INSERT INTO `pizza_ingredient` VALUES (1,1),(2,1),(3,1),(4,1),(5,1),(6,1),(7,1),(8,1),(9,1),(10,1),(1,2),(3,2),(4,2),(6,2),(7,2),(8,2),(9,2),(10,2),(2,3),(5,3),(3,4),(8,4),(4,5),(5,5),(9,5),(10,5),(4,6),(5,6),(4,7),(5,7),(4,8),(5,8),(9,8),(6,9),(8,9),(9,9),(6,10),(1,11),(2,11),(7,12),(7,13);
 /*!40000 ALTER TABLE `pizza_ingredient` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -330,4 +331,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-10-18 21:08:23
+-- Dump completed on 2025-10-20 17:41:47
