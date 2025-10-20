@@ -7,6 +7,7 @@ Made by:
 - Noortje van Maldegem (i6374487)
 
 ## Table of Contents
+- [Disclaimer about the video](#disclaimer-about-the-video)
 - [Features](#features)
 - [Setup Instructions](#setup-instructions)
 - [Running the Application](#running-the-application)
@@ -15,6 +16,15 @@ Made by:
 - [Technologies Used](#technologies-used)
 
 ---
+
+## Dislaimer about the video
+
+After we made the video, we saw that fake.adress() not only gives a street name and house number, but also a postal code. Since we keep the postal code in a separate column in the database, this doesnt make sense and the assignment to delivery persons is not right. 
+
+So we changed the address to fake.street_name and a random integer. The postcodes seen in the address column in the video are thus not representative, but it is fixed now and in the application everything works correctly.
+
+---
+
 
 ## Features
 
